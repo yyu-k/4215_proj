@@ -1,0 +1,156 @@
+//Removed HexIntegerLiteral and NumericLiteral
+
+Program
+    = a:Expression __ EOS __ b:Program { return {tag : "blk", body : [a].concat(b).filter(x=>x!=null)} }
+    / a:Expression? { return {tag : "blk", body : a}}
+
+Expression
+    = e1:Term __ symbol:BinaryOperator __ e2:Term {
+        return {
+            tag : "binop",
+            sym : symbol,
+            first : e1,
+            second : e2
+        }
+    } 
+    / Term
+
+Term 
+  = Literal
+
+//Added DecimalLiteral
+Literal
+  = NullLiteral
+  / BooleanLiteral
+  / DecimalLiteral
+
+NullLiteral
+  = NullToken { return { tag: "Literal", value: null }; }
+
+BooleanLiteral
+  = TrueToken  { return { tag: "Literal", value: true  }; }
+  / FalseToken { return { tag: "Literal", value: false }; }
+
+
+DecimalLiteral
+  = DecimalIntegerLiteral "." DecimalDigit* ExponentPart? {
+      return { tag: "Literal", value: parseFloat(text()) };
+    }
+  / "." DecimalDigit+ ExponentPart? {
+      return { tag: "Literal", value: parseFloat(text()) };
+    }
+  / DecimalIntegerLiteral ExponentPart? {
+      return { tag: "Literal", value: parseFloat(text()) };
+    }
+
+DecimalIntegerLiteral
+  = "0"
+  / NonZeroDigit DecimalDigit*
+
+DecimalDigit
+  = [0-9]
+
+NonZeroDigit
+  = [1-9]
+
+ExponentPart
+  = ExponentIndicator SignedInteger
+
+ExponentIndicator
+  = "e"i
+
+SignedInteger
+  = [+-]? DecimalDigit+
+
+HexDigit
+  = [0-9a-f]i
+
+//Simplified IdentifierPart 
+IdentifierPart
+  = IdentifierStart
+
+//Simplified IdentifierStart
+IdentifierStart
+  = "$"
+  / "_"
+  / "\\" 
+
+// Tokens
+
+BreakToken      = "break"      !IdentifierPart
+CaseToken       = "case"       !IdentifierPart
+CatchToken      = "catch"      !IdentifierPart
+ClassToken      = "class"      !IdentifierPart
+ConstToken      = "const"      !IdentifierPart
+ContinueToken   = "continue"   !IdentifierPart
+DebuggerToken   = "debugger"   !IdentifierPart
+DefaultToken    = "default"    !IdentifierPart
+DeleteToken     = "delete"     !IdentifierPart
+DoToken         = "do"         !IdentifierPart
+ElseToken       = "else"       !IdentifierPart
+EnumToken       = "enum"       !IdentifierPart
+ExportToken     = "export"     !IdentifierPart
+ExtendsToken    = "extends"    !IdentifierPart
+FalseToken      = "false"      !IdentifierPart
+FinallyToken    = "finally"    !IdentifierPart
+ForToken        = "for"        !IdentifierPart
+FunctionToken   = "function"   !IdentifierPart
+GetToken        = "get"        !IdentifierPart
+IfToken         = "if"         !IdentifierPart
+ImportToken     = "import"     !IdentifierPart
+InstanceofToken = "instanceof" !IdentifierPart
+InToken         = "in"         !IdentifierPart
+NewToken        = "new"        !IdentifierPart
+NullToken       = "null"       !IdentifierPart
+ReturnToken     = "return"     !IdentifierPart
+SetToken        = "set"        !IdentifierPart
+SuperToken      = "super"      !IdentifierPart
+SwitchToken     = "switch"     !IdentifierPart
+ThisToken       = "this"       !IdentifierPart
+ThrowToken      = "throw"      !IdentifierPart
+TrueToken       = "true"       !IdentifierPart
+TryToken        = "try"        !IdentifierPart
+TypeofToken     = "typeof"     !IdentifierPart
+VarToken        = "var"        !IdentifierPart
+VoidToken       = "void"       !IdentifierPart
+WhileToken      = "while"      !IdentifierPart
+WithToken       = "with"       !IdentifierPart
+
+__
+  = (WhiteSpace)*
+
+
+WhiteSpace "whitespace"
+  = "\t"
+  / "\v"
+  / "\f"
+  / " "
+  / "\u00A0"
+  / "\uFEFF"
+  / Zs
+
+// Separator, Space
+Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
+
+EOS
+  = __ ";"
+
+
+UnaryOperator
+  = $DeleteToken
+  / $VoidToken
+  / $TypeofToken
+  / "++"
+  / "--"
+  / $("+" !"=")
+  / $("-" !"=")
+  / "~"
+  / "!"
+
+
+
+BinaryOperator
+  = $("+" ![+=])
+  / $("-" ![-=])
+
+
