@@ -1115,14 +1115,4 @@ const parse_compile_run =
         return run(heapsize_words)
 }
 
-//
-// testing
-//
-program = `{
-const i = 10;
-5 + 2;
-3 + 10;
-}`;
-let parsed = parser.parse(program)
-console.log(parsed.body.stmts);
-console.log(parse_compile_run(program, 50000));
+module.exports = { parse_compile_run };
