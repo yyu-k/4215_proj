@@ -1,11 +1,34 @@
 //Removed HexIntegerLiteral and NumericLiteral
 
-Program
-    = a:Expression __ EOS __ b:Program { return {tag : "blk", body : [a].concat(b).filter(x=>x!=null)} }
-    / a:Expression? { return {tag : "blk", body : a}}
+
+Sequence
+    = Block
+    / __ a:Statement __ EOS __ b:Sequence { return [a].concat(b).filter(x=>x!=null) }
+    / a:Statement? { return a }
+
+Block
+  = "{" __ body:(Sequence)? "}" {
+      return {
+        tag: "blk",
+        body: {tag : "seq", stmts : body }
+      };
+    }
+
+Statement 
+    = ConstantDeclaration 
+    / Expression
+
+ConstantDeclaration 
+  = ConstToken __ symbol:Identifier __ "=" !"=" __ expression:Expression { 
+      return {
+        tag : "const",
+        sym : symbol.join(""),
+        expr : expression
+      }
+    }
 
 Expression
-    = e1:Term __ symbol:BinaryOperator __ e2:Term {
+    = e1:Term __ symbol:BinaryOperator __ e2:Expression {
         return {
             tag : "binop",
             sym : symbol,
@@ -17,6 +40,10 @@ Expression
 
 Term 
   = Literal
+
+//Need to consider what are valid Identifiers
+Identifier
+  = [A-Za-z0-9]+
 
 //Added DecimalLiteral
 Literal
@@ -116,8 +143,18 @@ VoidToken       = "void"       !IdentifierPart
 WhileToken      = "while"      !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 
+LineTerminator
+  = [\n\r\u2028\u2029]
+
+LineTerminatorSequence "end of line"
+  = "\n"
+  / "\r\n"
+  / "\r"
+  / "\u2028"
+  / "\u2029" 
+
 __
-  = (WhiteSpace)*
+  = (WhiteSpace / LineTerminatorSequence)*
 
 
 WhiteSpace "whitespace"
