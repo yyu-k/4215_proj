@@ -1,6 +1,15 @@
-const { parser } = require('./parser/parser')
+import { parser } from "./parser/parser";
 
-const arity = (f) => {
+const error = (objects: any, message?: string) => {
+    if (typeof message == 'undefined') {
+        message = objects
+    } else {
+        message = message + JSON.stringify(objects)
+    }
+    throw new Error(message)
+}
+
+const arity = (f: (...args: unknown[]) => {}) => {
     return f.length
 }
 
@@ -8,20 +17,21 @@ const arity = (f) => {
 // using arrays as stacks
 // **********************/
 
-// add values destructively to the end of 
+// add values destructively to the end of
 // given array; return the array
-const push = (array, ...items) => {
+function push<T>(array: T[], ...items: T[]) {
     // fixed by Liew Zhao Wei, see Discussion 5
     for (let item of items) {
         array.push(item)
     }
-    return array 
+    return array
 }
 
 // return the last element of given array
 // without changing the array
-const peek = (array, address) =>
-    array.slice(-1 - address)[0]
+function peek<T>(array: T[], address: number) {
+    return array.slice(-1 - address)[0]
+}
 
 // *************************
 // HEAP
@@ -31,10 +41,10 @@ const peek = (array, address) =>
 
 const word_size = 8
 
-// heap_make allocates a heap of given size 
-// (in bytes) and returns a DataView of that, 
+// heap_make allocates a heap of given size
+// (in bytes) and returns a DataView of that,
 // see https://www.javascripture.com/DataView
-const heap_make = words => {
+const heap_make = (words: number) => {
     const data = new ArrayBuffer(words * word_size)
     const view = new DataView(data)
     return view
@@ -42,32 +52,32 @@ const heap_make = words => {
 
 // for convenience, HEAP is global variable
 // initialized in initialize_machine()
-let HEAP 
+let HEAP: DataView
 let heap_size
 
 // free is the next free index in the free list
-let free 
+let free: number
 
-// heap_allocate allocates a given number of words 
+// heap_allocate allocates a given number of words
 // on the heap and marks the first word with a 1-byte tag.
 // the last two bytes of the first word indicate the number
 // of children (addresses) that follow the tag word:
-// [1 byte tag, 4 bytes payload (depending on node type), 
-//  2 bytes #children, 1 byte unused] 
+// [1 byte tag, 4 bytes payload (depending on node type),
+//  2 bytes #children, 1 byte unused]
 // Note: payload depends on the type of node
 
 //AMENDED: The last unused byte in the tag is now used as the markbit
-let HEAPBOTTOM //the smallest heap address/first node address AFTER literals/constants/builtins - see initialize_machine
-let HEAPTOP //the last node address + 1 - see initialize_machine
+let HEAPBOTTOM: number //the smallest heap address/first node address AFTER literals/constants/builtins - see initialize_machine
+let HEAPTOP: number //the last node address + 1 - see initialize_machine
 const MARK_OFFSET = 7; //last byte in the tag
 const MARKED = 1;
-const UNMARKED = 0; 
+const UNMARKED = 0;
 
 const size_offset = 5
 
 const node_size = 10
 
-const is_marked = (address) => {
+const is_marked = (address: number) => {
     if (heap_get_byte_at_offset(address, MARK_OFFSET) === MARKED) {
         return true
     } else {
@@ -85,10 +95,10 @@ const heap_allocate = (tag, size) => {
             //AMENDED
             mark_sweep();
         }
-        const address = free 
+        const address = free
         free = heap_get(free)
         HEAP.setInt8(address * word_size, tag)
-        HEAP.setUint16(address * word_size + 
+        HEAP.setUint16(address * word_size +
                        size_offset,
                        size)
         return address
@@ -96,12 +106,12 @@ const heap_allocate = (tag, size) => {
 
 //AMENDED
 //v should be the address of the node
-const mark_byte = (v) => {
-    heap_set_byte_at_offset(v, MARK_OFFSET, MARKED); 
+const mark_byte = (v: number) => {
+    heap_set_byte_at_offset(v, MARK_OFFSET, MARKED);
 }
 
-const unmark_byte = (v) => {
-    heap_set_byte_at_offset(v, MARK_OFFSET, UNMARKED); 
+const unmark_byte = (v: number) => {
+    heap_set_byte_at_offset(v, MARK_OFFSET, UNMARKED);
 }
 
 const mark = (v) => {
@@ -113,7 +123,7 @@ const mark = (v) => {
     //mark the tag at the address of the node
     mark_byte(v);
     //mark the children of that node recursively
-    const n_children = heap_get_number_of_children(v); 
+    const n_children = heap_get_number_of_children(v);
     // console.log('node-n_children', v, n_children);
     for (let i = 0; i < n_children; i++) {
         const child = heap_get_child(v, i);
@@ -179,17 +189,17 @@ const mark_sweep = () => {
         error("heap memory exhausted")
     }
     // console.log('mark_sweep done!')
-} 
+}
 
-const heap_already_copied = node =>
-    heap_get_forwarding_address(node) >= to_space
-	&& 
-	heap_get_forwarding_address(node) <= free
+// const heap_already_copied = node =>
+//     heap_get_forwarding_address(node) >= to_space
+// 	&&
+// 	heap_get_forwarding_address(node) <= free
 
-const heap_set_forwarding_address = (node, address) => 
+const heap_set_forwarding_address = (node, address) =>
     HEAP.setInt32(node * word_size, address)
 
-const heap_get_forwarding_address = node => 
+const heap_get_forwarding_address = node =>
     HEAP.getInt32(node * word_size)
 
 // get and set a word in heap at given address
@@ -206,14 +216,14 @@ const heap_get_child = (address, child_index) =>
 const heap_set_child = (address, child_index, value) =>
     heap_set(address + 1 + child_index, value)
 
-const heap_get_tag = address => 
+const heap_get_tag = address =>
     HEAP.getInt8(address * word_size)
 
-const heap_get_size = address => 
-    HEAP.getUint16(address * word_size + 
+const heap_get_size = address =>
+    HEAP.getUint16(address * word_size +
                               size_offset)
 
-// the number of children is one less than the size 
+// the number of children is one less than the size
 // except for number nodes:
 //                 they have size 2 but no children
 const heap_get_number_of_children = address =>
@@ -223,20 +233,20 @@ const heap_get_number_of_children = address =>
 
 // access byte in heap, using address and offset
 const heap_set_byte_at_offset =
-    (address, offset, value) => 
+    (address, offset, value) =>
     HEAP.setUint8(address * word_size + offset, value)
-        
+
 const heap_get_byte_at_offset =
-    (address, offset) => 
+    (address, offset) =>
     HEAP.getUint8(address * word_size + offset)
-     
+
 // access byte in heap, using address and offset
 const heap_set_2_bytes_at_offset =
-    (address, offset, value) => 
+    (address, offset, value) =>
     HEAP.setUint16(address * word_size + offset, value)
-        
+
 const heap_get_2_bytes_at_offset =
-    (address, offset) => 
+    (address, offset) =>
     HEAP.getUint16(address * word_size + offset)
 
 // for debugging: return a string that shows the bits
@@ -247,17 +257,17 @@ const word_to_string = word => {
     view.setFloat64(0, word);
     let binStr = '';
     for (let i = 0; i < 8; i++) {
-        binStr += ('00000000' + 
-                   view.getUint8(i).toString(2)).slice(-8) + 
+        binStr += ('00000000' +
+                   view.getUint8(i).toString(2)).slice(-8) +
                    ' ';
     }
     return binStr
 }
 
-// values 
+// values
 
-// All values are allocated on the heap as nodes. The first 
-// word of the node is a header, and the first byte of the 
+// All values are allocated on the heap as nodes. The first
+// word of the node is a header, and the first byte of the
 // header is a tag that identifies the type of node
 
 // a little trick: tags are all negative so that we can use
@@ -281,7 +291,7 @@ const Builtin_tag        = 12
 
 // all values (including literals) are allocated on the heap.
 
-// We allocate canonical values for 
+// We allocate canonical values for
 // true, false, undefined, null, and unassigned
 // and make sure no such values are created at runtime
 
@@ -289,17 +299,17 @@ const Builtin_tag        = 12
 // in the byte following the tag
 
 let False
-const is_False = address => 
+const is_False = address =>
     heap_get_tag(address) === False_tag
 let True
-const is_True = address => 
+const is_True = address =>
     heap_get_tag(address) === True_tag
 
-const is_Boolean = address => 
+const is_Boolean = address =>
     is_True(address) || is_False(address)
 
 let Null
-const is_Null = address => 
+const is_Null = address =>
     heap_get_tag(address) === Null_tag
 
 let Unassigned
@@ -319,11 +329,11 @@ const allocate_literal_values = () => {
 }
 
 // builtins: builtin id is encoded in second byte
-// [1 byte tag, 1 byte id, 3 bytes unused, 
+// [1 byte tag, 1 byte id, 3 bytes unused,
 //  2 bytes #children, 1 byte unused]
 // Note: #children is 0
 
-const is_Builtin = address => 
+const is_Builtin = address =>
     heap_get_tag(address) === Builtin_tag
 
 const heap_allocate_Builtin = id => {
@@ -332,12 +342,12 @@ const heap_allocate_Builtin = id => {
         return address
     }
 
-const heap_get_Builtin_id = address => 
+const heap_get_Builtin_id = address =>
     heap_get_byte_at_offset(address, 1)
 
 // closure
-// [1 byte tag, 1 byte arity, 2 bytes pc, 1 byte unused, 
-//  2 bytes #children, 1 byte unused] 
+// [1 byte tag, 1 byte arity, 2 bytes pc, 1 byte unused,
+//  2 bytes #children, 1 byte unused]
 // followed by the address of env
 // note: currently bytes at offset 4 and 7 are not used;
 //   they could be used to increase pc and #children range
@@ -350,7 +360,7 @@ const heap_allocate_Closure = (arity, pc, env) => {
         return address
     }
 
-const heap_get_Closure_arity = address => 
+const heap_get_Closure_arity = address =>
     heap_get_byte_at_offset(address, 1)
 
 const heap_get_Closure_pc = address =>
@@ -362,9 +372,9 @@ const heap_get_Closure_environment = address =>
 const is_Closure = address =>
     heap_get_tag(address) === Closure_tag
 
-// block frame 
-// [1 byte tag, 4 bytes unused, 
-//  2 bytes #children, 1 byte unused] 
+// block frame
+// [1 byte tag, 4 bytes unused,
+//  2 bytes #children, 1 byte unused]
 
 const heap_allocate_Blockframe = env => {
         const address = heap_allocate(Blockframe_tag, 2)
@@ -378,9 +388,9 @@ const heap_get_Blockframe_environment = address =>
 const is_Blockframe = address =>
     heap_get_tag(address) === Blockframe_tag
 
-// call frame 
-// [1 byte tag, 1 byte unused, 2 bytes pc, 
-//  1 byte unused, 2 bytes #children, 1 byte unused] 
+// call frame
+// [1 byte tag, 1 byte unused, 2 bytes pc,
+//  1 byte unused, 2 bytes #children, 1 byte unused]
 // followed by the address of env
 
 const heap_allocate_Callframe = (env, pc) => {
@@ -396,15 +406,15 @@ const heap_get_Callframe_environment = address =>
 const heap_get_Callframe_pc = address =>
     heap_get_2_bytes_at_offset(address, 2)
 
-const is_Callframe = address => 
+const is_Callframe = address =>
     heap_get_tag(address) === Callframe_tag
 
 // environment frame
-// [1 byte tag, 4 bytes unused, 
-//  2 bytes #children, 1 byte unused] 
+// [1 byte tag, 4 bytes unused,
+//  2 bytes #children, 1 byte unused]
 // followed by the addresses of its values
 
-const heap_allocate_Frame = number_of_values => 
+const heap_allocate_Frame = number_of_values =>
     heap_allocate(Frame_tag, number_of_values + 1)
 
 const heap_Frame_display = address => {
@@ -413,25 +423,25 @@ const heap_Frame_display = address => {
         console.log(size, "frame size:")
         for (let i = 0; i < size; i++) {
             console.log(i, "value address:")
-            const value = 
+            const value =
                   heap_get_child(address, i)
             console.log(value, "value:")
             console.log(word_to_string(value), "value word:")
         }
     }
-        
+
 // environment
-// [1 byte tag, 4 bytes unused, 
-//  2 bytes #children, 1 byte unused] 
+// [1 byte tag, 4 bytes unused,
+//  2 bytes #children, 1 byte unused]
 // followed by the addresses of its frames
 
-const heap_allocate_Environment = number_of_frames => 
+const heap_allocate_Environment = number_of_frames =>
        heap_allocate(Environment_tag, number_of_frames + 1)
 
-// access environment given by address 
-// using a "position", i.e. a pair of 
+// access environment given by address
+// using a "position", i.e. a pair of
 // frame index and value index
-const heap_get_Environment_value = 
+const heap_get_Environment_value =
     (env_address, position) => {
         const [frame_index, value_index] = position
         const frame_address =
@@ -449,16 +459,16 @@ const heap_set_Environment_value =
             frame_address, value_index, value)
     }
 
-// extend a given environment by a new frame: 
+// extend a given environment by a new frame:
 // create a new environment that is bigger by 1
 // frame slot than the given environment.
-// copy the frame Addresses of the given 
+// copy the frame Addresses of the given
 // environment to the new environment.
-// enter the address of the new frame to end 
+// enter the address of the new frame to end
 // of the new environment
 const heap_Environment_extend =
     (frame_address, env_address) => {
-        const old_size = 
+        const old_size =
             heap_get_size(env_address)
         const new_env_address =
             heap_allocate_Environment(old_size)
@@ -481,13 +491,13 @@ const heap_Environment_display = env_address => {
         for (let i = 0; i < size; i++) {
             console.log(i, "frame index:")
             const frame = heap_get_child(env_address, i)
-            heap_Frame_console.log(frame)
+            console.log(frame)
         }
     }
-    
+
 // pair
-// [1 byte tag, 4 bytes unused, 
-//  2 bytes #children, 1 byte unused] 
+// [1 byte tag, 4 bytes unused,
+//  2 bytes #children, 1 byte unused]
 // followed by head and tail addresses, one word each
 const heap_allocate_Pair = (hd, tl) => {
         const pair_address = heap_allocate(Pair_tag, 3)
@@ -496,12 +506,12 @@ const heap_allocate_Pair = (hd, tl) => {
         return pair_address
     }
 
-const is_Pair = address => 
+const is_Pair = address =>
     heap_get_tag(address) === Pair_tag
 
 // number
-// [1 byte tag, 4 bytes unused, 
-//  2 bytes #children, 1 byte unused] 
+// [1 byte tag, 4 bytes unused,
+//  2 bytes #children, 1 byte unused]
 // followed by the number, one word
 // note: #children is 0
 
@@ -511,24 +521,24 @@ const heap_allocate_Number = n => {
         return number_address
     }
 
-const is_Number = address => 
+const is_Number = address =>
     heap_get_tag(address) === Number_tag
 
 //
 // conversions between addresses and JS_value
 //
 
-const address_to_JS_value = x => 
+const address_to_JS_value = x =>
     is_Boolean(x)
     ? (is_True(x) ? true : false)
     : is_Number(x)
     ? heap_get(x + 1)
     : is_Undefined(x)
     ? undefined
-    : is_Unassigned(x) 
-    ? "<unassigned>" 
-    : is_Null(x) 
-    ? null 
+    : is_Unassigned(x)
+    ? "<unassigned>"
+    : is_Null(x)
+    ? null
     : is_Pair(x)
     ? [
         address_to_JS_value(heap_get_child(x, 0)),
@@ -544,7 +554,7 @@ const type_check_generator = (type) => {
     return (x) => {
         if (typeof x === type) {
             return true
-        } 
+        }
         return false
     }
 }
@@ -557,31 +567,31 @@ const is_undefined = type_check_generator('undefined');
 
 const is_null = type_check_generator('null');
 
-const JS_value_to_address = x => 
+const JS_value_to_address = x =>
     is_boolean(x)
     ? (x ? True : False)
     : is_number(x)
     ? heap_allocate_Number(x)
     : is_undefined(x)
     ? Undefined
-    : is_null(x) 
-    ? Null 
+    : is_null(x)
+    ? Null
     : "unknown word tag: " + word_to_string(x)
 
 // ************************
 // compile-time environment
 // ************************/
- 
-// a compile-time environment is an array of 
-// compile-time frames, and a compile-time frame 
+
+// a compile-time environment is an array of
+// compile-time frames, and a compile-time frame
 // is an array of symbols
 
-// find the position [frame-index, value-index] 
+// find the position [frame-index, value-index]
 // of a given symbol x
 const compile_time_environment_position = (env, x) => {
     let frame_index = env.length
     while (value_index(env[--frame_index], x) === -1) {}
-    return [frame_index, 
+    return [frame_index,
             value_index(env[frame_index], x)]
 }
 
@@ -594,7 +604,7 @@ const value_index = (frame, x) => {
 
 // in this machine, the builtins take their
 // arguments directly from the operand stack,
-// to save the creation of an intermediate 
+// to save the creation of an intermediate
 // argument array
 const builtin_implementation = {
     display       : () => {
@@ -625,12 +635,12 @@ const builtin_implementation = {
 }
 
 const builtins = {}
-const builtin_array = []
+const builtin_array: (() => {})[] = []
 {
     let i = 0
     for (const key in builtin_implementation) {
-        builtins[key] = 
-            { tag:   'BUILTIN', 
+        builtins[key] =
+            { tag:   'BUILTIN',
               id:    i,
               arity: arity(builtin_implementation[key])
             }
@@ -650,7 +660,7 @@ const compile_time_environment_extend = (vs, e) => {
 // compile-time frames only need synbols (keys), no values
 const builtin_compile_frame = Object.keys(builtins)
 const constant_compile_frame = Object.keys(constants)
-const global_compile_environment = 
+const global_compile_environment =
         [builtin_compile_frame, constant_compile_frame]
 
 // ********
@@ -659,9 +669,9 @@ const global_compile_environment =
 
 // scanning out the declarations from (possibly nested)
 // sequences of statements, ignoring blocks
-const scan_for_locals = comp => 
+const scan_for_locals = comp =>
     comp.tag === 'seq'
-    ? comp.stmts.reduce((acc, x) => 
+    ? comp.stmts.reduce((acc, x) =>
                         acc.concat(scan_for_locals(x)),
                         [])
     : ['let', 'const', 'fun'].includes(comp.tag)
@@ -669,7 +679,7 @@ const scan_for_locals = comp =>
     : []
 
 const compile_sequence = (seq, ce) => {
-    if (seq.length === 0) 
+    if (seq.length === 0)
         return instrs[wc++] = {tag: "LDC", val: undefined}
     let first = true
     for (let comp of seq) {
@@ -683,18 +693,18 @@ const compile_sequence = (seq, ce) => {
 let wc
 // instrs: instruction array
 let instrs
-    
+
 const compile_comp = {
 Literal:
     (comp, ce) => {
-        instrs[wc++] = { tag: "LDC", 
+        instrs[wc++] = { tag: "LDC",
                          val: comp.value
         }
     },
 nam:
     // store precomputed position information in LD instruction
     (comp, ce) => {
-        instrs[wc++] = { tag: "LD", 
+        instrs[wc++] = { tag: "LD",
                          sym: comp.sym,
                          pos: compile_time_environment_position(
                                   ce, comp.sym)
@@ -713,24 +723,24 @@ binop:
     },
 log:
     (comp, ce) => {
-        compile(comp.sym == '&&' 
-                ? {tag: 'cond_expr', 
-                   pred: comp.first, 
+        compile(comp.sym == '&&'
+                ? {tag: 'cond_expr',
+                   pred: comp.first,
                    cons: {tag: 'lit', val: true},
                    alt: comp.second}
-                : {tag: 'cond_expr',  
-                   pred: cmd.first,
-                   cons: cmd.second, 
+                : {tag: 'cond_expr',
+                   pred: comp.first,
+                   cons: comp.second,
                    alt: {tag: 'lit', val: false}},
 	            ce)
     },
-cond: 
+cond:
     (comp, ce) => {
         compile(comp.pred, ce)
-        const jump_on_false_instruction = {tag: 'JOF'}
+        const jump_on_false_instruction = {tag: 'JOF', addr: -1}
         instrs[wc++] = jump_on_false_instruction
         compile(comp.cons, ce)
-        const goto_instruction = { tag: 'GOTO' }
+        const goto_instruction = {tag: 'GOTO', addr: -1}
         instrs[wc++] = goto_instruction;
         const alternative_address = wc;
         jump_on_false_instruction.addr = alternative_address;
@@ -741,14 +751,14 @@ while:
     (comp, ce) => {
         const loop_start = wc
         compile(comp.pred, ce)
-        const jump_on_false_instruction = {tag: 'JOF'}
+        const jump_on_false_instruction = {tag: 'JOF', addr: -1}
         instrs[wc++] = jump_on_false_instruction
         compile(comp.body, ce)
         instrs[wc++] = {tag: 'POP'}
         instrs[wc++] = {tag: 'GOTO', addr: loop_start}
         jump_on_false_instruction.addr = wc
         instrs[wc++] = {tag: 'LDC', val: undefined}
-    }, 
+    },
 app:
     (comp, ce) => {
         compile(comp.fun, ce)
@@ -765,17 +775,17 @@ assmt:
         console.log(comp);
         console.log(ce)
         console.log('lululu')
-        instrs[wc++] = {tag: 'ASSIGN', 
+        instrs[wc++] = {tag: 'ASSIGN',
                         pos: compile_time_environment_position(
                                  ce, comp.sym)}
     },
 lam:
     (comp, ce) => {
-        instrs[wc++] = {tag: 'LDF', 
-                        arity: comp.arity, 
+        instrs[wc++] = {tag: 'LDF',
+                        arity: comp.arity,
                         addr: wc + 1};
         // jump over the body of the lambda expression
-        const goto_instruction = {tag: 'GOTO'}
+        const goto_instruction = {tag: 'GOTO', addr: -1}
         instrs[wc++] = goto_instruction
         // extend compile-time environment
         compile(comp.body,
@@ -785,7 +795,7 @@ lam:
         instrs[wc++] = {tag: 'RESET'}
         goto_instruction.addr = wc;
     },
-seq: 
+seq:
     (comp, ce) => compile_sequence(comp.stmts, ce),
 blk:
     (comp, ce) => {
@@ -794,20 +804,20 @@ blk:
         compile(comp.body,
                 // extend compile-time environment
 		        compile_time_environment_extend(
-		            locals, ce))     
+		            locals, ce))
         instrs[wc++] = {tag: 'EXIT_SCOPE'}
     },
-let: 
+let:
     (comp, ce) => {
         compile(comp.expr, ce)
-        instrs[wc++] = {tag: 'ASSIGN', 
+        instrs[wc++] = {tag: 'ASSIGN',
                         pos: compile_time_environment_position(
                                  ce, comp.sym)}
     },
 const:
     (comp, ce) => {
         compile(comp.expr, ce)
-        instrs[wc++] = {tag: 'ASSIGN', 
+        instrs[wc++] = {tag: 'ASSIGN',
                         pos: compile_time_environment_position(
                                  ce, comp.sym)}
     },
@@ -826,38 +836,38 @@ fun:
         compile(
             {tag:  'const',
              sym:  comp.sym,
-             expr: {tag: 'lam', 
-                    prms: comp.prms, 
+             expr: {tag: 'lam',
+                    prms: comp.prms,
                     body: comp.body}},
 	        ce)
     }
 }
 
-// compile component into instruction array instrs, 
+// compile component into instruction array instrs,
 // starting at wc (write counter)
 const compile = (comp, ce) => {
     // console.log(comp)
     compile_comp[comp.tag](comp, ce)
-} 
+}
 
-// compile program into instruction array instrs, 
+// compile program into instruction array instrs,
 // after initializing wc and instrs
 const compile_program = program => {
     wc = 0
-    instrs = []    
+    instrs = []
     compile(program, global_compile_environment)
     instrs[wc] = {tag: 'DONE'}
-} 
+}
 
 // **********************
 // operators and builtins
 // **********************/
 
 const binop_microcode = {
-    '+': (x, y)   => (is_number(x) && is_number(y)) ||
-                     (is_string(x) && is_string(y))
-                     ? x + y 
-                     : error([x,y], "+ expects two numbers" + 
+    '+': (x, y)   => (is_number(x) && is_number(y))
+                     // || (is_string(x) && is_string(y))
+                     ? x + y
+                     : error([x,y], "+ expects two numbers" +
                                     " or two strings, got:"),
     // todo: add error handling to JS for the following, too
     '*':   (x, y) => x * y,
@@ -873,17 +883,17 @@ const binop_microcode = {
 }
 
 // v2 is popped before v1
-const apply_binop = (op, v2, v1) => 
+const apply_binop = (op, v2, v1) =>
     JS_value_to_address(binop_microcode[op]
                         (address_to_JS_value(v1),
                          address_to_JS_value(v2)))
-	 
+
 const unop_microcode = {
     '-unary': x => - x,
     '!'     : x => ! x
 }
 
-const apply_unop = (op, v) => 
+const apply_unop = (op, v) =>
     JS_value_to_address(unop_microcode[op]
                         (address_to_JS_value(v)))
 
@@ -896,21 +906,21 @@ const apply_builtin = builtin_id => {
 
 const allocate_builtin_frame = () => {
     const builtin_values = Object.values(builtins)
-    const frame_address = 
+    const frame_address =
             heap_allocate_Frame(builtin_values.length)
     for (let i = 0; i < builtin_values.length; i++) {
         const builtin = builtin_values[i];
         heap_set_child(
-            frame_address, 
+            frame_address,
             i,
-            heap_allocate_Builtin(builtin.id))
+            heap_allocate_Builtin((builtin as {id:unknown}).id))
     }
     return frame_address
-}    
+}
 
 const allocate_constant_frame = () => {
     const constant_values = Object.values(constants)
-    const frame_address = 
+    const frame_address =
             heap_allocate_Frame(constant_values.length)
     for (let i = 0; i < constant_values.length; i++) {
         const constant_value = constant_values[i];
@@ -918,13 +928,13 @@ const allocate_constant_frame = () => {
             heap_set_child(frame_address, i, Undefined)
         } else {
             heap_set_child(
-                frame_address, 
+                frame_address,
                 i,
                 heap_allocate_Number(constant_value))
         }
     }
     return frame_address
-}    
+}
 
 // *******
 // machine
@@ -936,29 +946,29 @@ let OS   // JS array (stack) of words (Addresses,
 let PC   // JS number
 let E    // heap Address
 let RTS  // JS array (stack) of Addresses
-    HEAP // (declared above already)
+// HEAP  // (declared above already)
 
 const microcode = {
 LDC:
-    instr => 
+    instr =>
     push(OS, JS_value_to_address(instr.val)),
 UNOP:
     instr =>
     push(OS, apply_unop(instr.sym, OS.pop())),
 BINOP:
     instr =>
-    push(OS, 
+    push(OS,
          apply_binop(instr.sym, OS.pop(), OS.pop())),
-POP: 
+POP:
     instr =>
     OS.pop(),
-JOF: 
-    instr => 
+JOF:
+    instr =>
     PC = is_True(OS.pop()) ? PC : instr.addr,
 GOTO:
-    instr => 
+    instr =>
     PC = instr.addr,
-ENTER_SCOPE: 
+ENTER_SCOPE:
     instr => {
         push(RTS, heap_allocate_Blockframe(E))
         const frame_address = heap_allocate_Frame(instr.num)
@@ -971,26 +981,26 @@ ENTER_SCOPE:
         }
     },
 EXIT_SCOPE:
-    instr => 
+    instr =>
     E = heap_get_Blockframe_environment(RTS.pop()),
-LD: 
+LD:
     instr => {
         const val = heap_get_Environment_value(E, instr.pos)
-        if (is_Unassigned(val)) 
+        if (is_Unassigned(val))
             error("access of unassigned variable")
         push(OS, val)
     },
-ASSIGN: 
+ASSIGN:
     instr =>
     heap_set_Environment_value(E, instr.pos, peek(OS,0)),
-LDF: 
+LDF:
     instr => {
-        const closure_address = 
+        const closure_address =
                   heap_allocate_Closure(
                       instr.arity, instr.addr, E)
         push(OS, closure_address)
     },
-CALL: 
+CALL:
     instr => {
         const arity = instr.arity
         const fun = peek(OS, arity)
@@ -1012,12 +1022,12 @@ CALL:
         push(RTS, callframe_address);
         push(RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
         E = heap_Environment_extend(
-                new_frame, 
+                new_frame,
                 heap_get_Closure_environment(fun))
         RTS.pop(); //remove new_frame from RTS
         PC = new_PC
     },
-TAIL_CALL: 
+TAIL_CALL:
     instr => {
         const arity = instr.arity
         const fun = peek(OS, arity)
@@ -1039,7 +1049,7 @@ TAIL_CALL:
         RTS.pop(); //remove new_frame from RTS
         PC = new_PC
     },
-RESET: 
+RESET:
     instr => {
         // keep popping...
         const top_frame = RTS.pop()
@@ -1049,7 +1059,7 @@ RESET:
             E = heap_get_Callframe_environment(top_frame)
         } else {
 	    PC--
-        }    
+        }
     }
 }
 
@@ -1078,11 +1088,11 @@ function initialize_machine(heapsize_words) {
     allocate_literal_values()
     const builtins_frame = allocate_builtin_frame()
     const constants_frame = allocate_constant_frame()
-    //AMENDED - initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept. 
+    //AMENDED - initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept.
     HEAPBOTTOM = free;
     E = heap_allocate_Environment(0)
     E = heap_Environment_extend(builtins_frame, E)
-    E = heap_Environment_extend(constants_frame, E)   
+    E = heap_Environment_extend(constants_frame, E)
 }
 
 function run(heapsize_words) {
@@ -1102,17 +1112,15 @@ function run(heapsize_words) {
     //console.log(OS, "\nfinal operands:           ")
     //print_OS()
     return address_to_JS_value(peek(OS, 0))
-} 
+}
 
 // parse_compile_run on top level
 // * parse input to json syntax tree
 // * compile syntax tree into code
 // * run code
 
-const parse_compile_run = 
-    (program, heapsize_words) => {
+export const parse_compile_run =
+    (program: string, heapsize_words: number) => {
         compile_program(parser.parse(program))
         return run(heapsize_words)
 }
-
-module.exports = { parse_compile_run };

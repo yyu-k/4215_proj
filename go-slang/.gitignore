@@ -1,6 +1,5 @@
 node_modules
 *.js
-!vm.js
 !docs/jsdoc/templates/**/*.js
 !docs/lib/**/*.js
 *.map
