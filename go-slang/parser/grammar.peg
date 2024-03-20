@@ -4,11 +4,11 @@ Sequence
     / a:Statement? { return a }
 
 Block
-  = "{" __ body:(Sequence)? "}" {
-      return {
-        tag: "blk",
-        body: {tag : "seq", stmts : body }
-      };
+    = "{" __ body:(Sequence)? "}" {
+        return {
+            tag: "blk",
+            body: { tag: "seq", stmts: body },
+        }
     }
 
 Statement 
@@ -16,48 +16,60 @@ Statement
     / Expression
 
 ConstantDeclaration 
-  = ConstToken __ symbol:Identifier __ "=" !"=" __ expression:Expression { 
-      return {
-        tag : "const",
-        sym : symbol,
-        expr : expression
-      }
-    }
-
-Expression
-    =
-    fn:PrimaryExpression args:Arguments { return { tag: "app", fun: fn, args: args } }
-    / PrimaryExpression
-
-ExpressionList
-    = expr:Expression exprs:( "," Expression )* {
-        // TODO: better way to express this?
-        return [expr].concat(exprs.filter(x => x !== ","))
-    }
-
-Arguments = "(" exprs:ExpressionList ")" { return exprs }
-
-PrimaryExpression
-    = BinaryExpression
-    / Term
-
-BinaryExpression
-    = e1:Term __ symbol:BinaryOperator __ e2:Expression {
+    = ConstToken __ symbol:Identifier __ "=" !"=" __ expression:Expression   {
         return {
-            tag : "binop",
-            sym : symbol,
-            first : e1,
-            second : e2
+            tag: "const",
+            sym: symbol,
+            expr: expression,
         }
     }
 
-Term
-  = Literal
-  / ident:Identifier { return { tag: "nam", sym: ident } }
+Expression
+    = BinaryExpression
+
+BinaryExpression
+    = e1:UnaryExpression __ symbol:BinaryOperator __ e2:BinaryExpression {
+        return {
+            tag: "binop",
+            sym: symbol,
+            first: e1,
+            second: e2
+        }
+    }
+    / UnaryExpression
+
+UnaryExpression
+    = op:UnaryOperator __ e:UnaryExpression {
+        return {
+            tag: "unop",
+            sym: op,
+            expr: e
+        }
+    }
+    / CallExpression
+
+CallExpression
+    = fn:PrimaryExpression __ args:Arguments {
+        return { tag: "app", fun: fn, args: args }
+    }
+    / PrimaryExpression
+
+PrimaryExpression
+    = Literal
+    / ident:Identifier { return { tag: "nam", sym: ident } }
+    / "(" __ expr:Expression __ ")" { return expr }
+
+Arguments
+    = "(" __ exprs:ExpressionList __ ")" { return exprs }
+
+ExpressionList
+    = expr:Expression exprs:( __ "," __ $ Expression )* {
+        return [expr].concat(exprs)
+    }
 
 //Need to consider what are valid Identifiers
 Identifier
-  = [A-Za-z0-9]+ { return text() }
+    = $ [A-Za-z0-9]+
 
 //Added DecimalLiteral
 Literal

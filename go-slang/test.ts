@@ -4,8 +4,10 @@ import { parse_compile_run } from './vm';
 const program = `{
 const i = 10;
 5 + 2;
+(5 - 4) + 2;
 3 + 10;
-display(1);
+display( 100 - 5 );
+14;
 }`;
 const ast = parser.parse(program)
 console.log(JSON.stringify(ast.body.stmts, null, 2));
