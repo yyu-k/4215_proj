@@ -1,7 +1,15 @@
 Sequence
     = Block
+    / __ a:Block __ b:Sequence  { return [a].concat(b).filter(x=>x!=null) }
+    / __ a:IfStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:Statement __ EOS __ b:Sequence { return [a].concat(b).filter(x=>x!=null) }
     / a:Statement? { return a }
+
+Statement 
+    = Block
+    / IfStatement 
+    / NameDeclaration
+    / Expression 
 
 Block
     = "{" __ body:(Sequence)? "}" {
@@ -11,9 +19,22 @@ Block
         }
     }
 
-Statement 
-    = NameDeclaration
-    / Expression
+IfStatement 
+    = IfToken __ pred:Expression __ cons:Block altBlk:(__ ElseToken __ alt: Block {return alt})|0..1| {
+      let processedAlt;
+      altBlk = altBlk[0];
+      if (altBlk) {
+        processedAlt = altBlk.body;
+      } else {
+        processedAlt = { tag: "seq", stmts: [] }
+      }
+      return {
+          tag : "cond",
+          pred: pred,
+          cons: cons.body,
+          alt: processedAlt
+      }
+    }
 
 NameDeclaration "name declaration"
     = ConstantDeclaration
@@ -49,6 +70,9 @@ ShortDeclaration "short var declaration"
 
 Expression
     = BinaryExpression
+    / UnaryExpression
+    / CallExpression
+    / PrimaryExpression
 
 BinaryExpression
     = e1:UnaryExpression __ symbol:BinaryOperator __ e2:BinaryExpression {
