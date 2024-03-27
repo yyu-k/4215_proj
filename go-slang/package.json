@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "peggy": "^4.0.2",
     "pegjs": "^0.10.0",
     "typescript": "^5.4.2"
   },

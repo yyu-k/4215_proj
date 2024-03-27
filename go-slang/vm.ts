@@ -674,7 +674,7 @@ const scan_for_locals = comp =>
     ? comp.stmts.reduce((acc, x) =>
                         acc.concat(scan_for_locals(x)),
                         [])
-    : ['let', 'const', 'fun'].includes(comp.tag)
+    : ['var', 'const', 'fun'].includes(comp.tag)
     ? [comp.sym]
     : []
 
@@ -807,7 +807,7 @@ blk:
 		            locals, ce))
         instrs[wc++] = {tag: 'EXIT_SCOPE'}
     },
-let:
+var:
     (comp, ce) => {
         compile(comp.expr, ce)
         instrs[wc++] = {tag: 'ASSIGN',

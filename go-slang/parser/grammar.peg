@@ -12,15 +12,38 @@ Block
     }
 
 Statement 
-    = ConstantDeclaration 
+    = NameDeclaration
     / Expression
 
-ConstantDeclaration 
+NameDeclaration "name declaration"
+    = ConstantDeclaration
+    / VariableDeclaration
+    / ShortDeclaration
+
+ConstantDeclaration "const declaration"
     = ConstToken __ symbol:Identifier __ "=" !"=" __ expression:Expression   {
         return {
             tag: "const",
             sym: symbol,
             expr: expression,
+        }
+    }
+
+VariableDeclaration "var declaration"
+    = VarToken __ symbol:Identifier __ "=" !"=" __ expression:Expression   {
+        return {
+            tag: "var",
+            sym: symbol,
+            expr: expression,
+        }
+    }
+
+ShortDeclaration "short var declaration"
+    = symbol:Identifier __ ShortAssmt __ expression:Expression {
+        return {
+          tag: "var",
+          sym: symbol,
+          expr: expression,
         }
     }
 
@@ -67,9 +90,9 @@ ExpressionList
         return [expr].concat(exprs)
     }
 
-//Need to consider what are valid Identifiers
+//In principle should be unicode letter and unicode digit
 Identifier
-    = $ [A-Za-z0-9]+
+    = $ ( letter ( letter / DecimalDigit )*) 
 
 //Added DecimalLiteral
 Literal
@@ -117,6 +140,10 @@ SignedInteger
 
 HexDigit
   = [0-9a-f]i
+
+letter            "letter"                      
+  = [a-zA-ZáàâäãåçéèêëíìîïñóòôöõúùûüýÿæœÁÀÂÄÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸÆŒ]
+  / "_"
 
 //Simplified IdentifierPart 
 IdentifierPart
@@ -169,6 +196,7 @@ VoidToken       = "void"       !IdentifierPart
 WhileToken      = "while"      !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 
+
 LineTerminator
   = [\n\r\u2028\u2029]
 
@@ -198,6 +226,8 @@ Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 EOS
   = __ ";"
 
+ShortAssmt      
+  = ":="
 
 UnaryOperator
   = $DeleteToken
@@ -209,8 +239,6 @@ UnaryOperator
   / $("-" !"=")
   / "~"
   / "!"
-
-
 
 BinaryOperator
   = $("+" ![+=])
