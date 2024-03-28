@@ -1,6 +1,8 @@
 Sequence
     = Block
     / __ a:Block __ b:Sequence  { return [a].concat(b).filter(x=>x!=null) }
+    // TODO: is this correct?
+    / __ a:FunctionDeclaration __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:IfStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:Statement __ EOS __ b:Sequence { return [a].concat(b).filter(x=>x!=null) }
     / a:Statement? { return a }
@@ -9,8 +11,19 @@ Statement
     = Block
     / IfStatement
     / NameDeclaration
+    / FunctionDeclaration
     / GoStatement
     / Expression 
+
+FunctionDeclaration =
+    "func" __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
+        return {
+            tag: "fun",
+            sym: symbol,
+            prms: params,
+            body,
+        }
+    }
 
 Block
     = "{" __ body:(Sequence)? "}" {

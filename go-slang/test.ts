@@ -10,8 +10,11 @@ if (true) {
 (5 - 4) + 2;
 3 + 10;
 display( 100 - 5 );
+func echo(i) {
+  display( i + 100 );
+}
 14;
-i;
+go echo(i);
 }`;
 const ast = parser.parse(program)
 console.log(JSON.stringify(ast.body.stmts, null, 2));
