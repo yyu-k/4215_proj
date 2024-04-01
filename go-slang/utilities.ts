@@ -7,6 +7,30 @@ export function error(objects: any, message?: string) {
     throw new Error(message)
 }
 
+export function arity(f: (...args: unknown[]) => {}) {
+    return f.length
+}
+
+// **********************
+// using arrays as stacks
+// **********************/
+
+// add values destructively to the end of
+// given array; return the array
+export function push<T>(array: T[], ...items: T[]) {
+    // fixed by Liew Zhao Wei, see Discussion 5
+    for (let item of items) {
+        array.push(item)
+    }
+    return array
+}
+
+// return the last element of given array
+// without changing the array
+export function peek<T>(array: T[], address: number) {
+    return array.slice(-1 - address)[0]
+}
+
 // for debugging: return a string that shows the bits
 // of a given word
 export function word_to_string(word: number) {

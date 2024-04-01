@@ -39,6 +39,9 @@ const Environment_tag    = 10 // 0000 1010
 const Pair_tag           = 11
 const Builtin_tag        = 12
 
+type Builtins = Record<string, { id: number }>
+type Constants = Record<string, unknown>
+
 export class Heap {
     data: DataView
     size: number
@@ -55,6 +58,10 @@ export class Heap {
     // primitive values
     values: Record<string, number>
 
+    // builtins and constants
+    builtins_frame: number
+    constants_frame: number
+
     // machine registers
     machine: {
         OS: number[]
@@ -63,7 +70,7 @@ export class Heap {
     }
 
     // allocates a heap of given size (in bytes) and returns a DataView of that
-    constructor(words: number) {
+    constructor(words: number, builtins: Builtins, constants: Constants) {
         const data = new ArrayBuffer(words * WORD_SIZE)
         this.data = new DataView(data)
         this.size = words
@@ -88,18 +95,45 @@ export class Heap {
         this.values.Undefined = this.allocate(Undefined_tag, 1)
 
         this.machine = {} as any
-    }
 
-    finalize() {
-        // TODO: should builtins + constants be defined in this file as well?
+        this.builtins_frame = this.allocate_builtin_frame(builtins)
+        this.constants_frame = this.allocate_constant_frame(constants)
+
         // Initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept.
         this.bottom = this.free;
+    }
+
+    allocate_builtin_frame(builtins: Builtins) {
+        const builtin_values = Object.values(builtins)
+        const frame_address = this.allocate_Frame(builtin_values.length)
+        for (let i = 0; i < builtin_values.length; i++) {
+            const builtin = builtin_values[i];
+            this.set_child(
+                frame_address,
+                i,
+                this.allocate_Builtin(builtin.id))
+        }
+        return frame_address
+    }
+
+    allocate_constant_frame(constants: Constants) {
+        const constant_values = Object.values(constants)
+        const frame_address = this.allocate_Frame(constant_values.length)
+        for (let i = 0; i < constant_values.length; i++) {
+            const constant_value = constant_values[i];
+            if (typeof constant_value === "undefined") {
+                this.set_child(frame_address, i, this.values.Undefined)
+            } else {
+                this.set_child(
+                    frame_address,
+                    i,
+                    this.allocate_Number(constant_value as number))
+            }
+        }
+        return frame_address
     }
 
     set_machine(OS: number[], E: number, RTS: number[]) {
-        // Initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept.
-        this.bottom = this.free;
-
         this.machine.OS = OS
         this.machine.E = E
         this.machine.RTS = RTS

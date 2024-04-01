@@ -1,29 +1,5 @@
 import { Heap } from './heap'
-import { error, word_to_string } from './utilities'
-
-const arity = (f: (...args: unknown[]) => {}) => {
-    return f.length
-}
-
-// **********************
-// using arrays as stacks
-// **********************/
-
-// add values destructively to the end of
-// given array; return the array
-function push<T>(array: T[], ...items: T[]) {
-    // fixed by Liew Zhao Wei, see Discussion 5
-    for (let item of items) {
-        array.push(item)
-    }
-    return array
-}
-
-// return the last element of given array
-// without changing the array
-function peek<T>(array: T[], address: number) {
-    return array.slice(-1 - address)[0]
-}
+import { arity, error, peek, push, word_to_string } from './utilities'
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
@@ -373,38 +349,6 @@ const apply_builtin = (builtin_id: number) => {
     push(OS, result)
 }
 
-const allocate_builtin_frame = () => {
-    const builtin_values = Object.values(builtins)
-    const frame_address =
-            heap.allocate_Frame(builtin_values.length)
-    for (let i = 0; i < builtin_values.length; i++) {
-        const builtin = builtin_values[i];
-        heap.set_child(
-            frame_address,
-            i,
-            heap.allocate_Builtin((builtin as { id: number }).id))
-    }
-    return frame_address
-}
-
-const allocate_constant_frame = () => {
-    const constant_values = Object.values(constants)
-    const frame_address =
-            heap.allocate_Frame(constant_values.length)
-    for (let i = 0; i < constant_values.length; i++) {
-        const constant_value = constant_values[i];
-        if (typeof constant_value === "undefined") {
-            heap.set_child(frame_address, i, heap.values.Undefined)
-        } else {
-            heap.set_child(
-                frame_address,
-                i,
-                heap.allocate_Number(constant_value))
-        }
-    }
-    return frame_address
-}
-
 // *******
 // machine
 // *******
@@ -536,16 +480,13 @@ RESET:
 
 // set up registers, including free list
 function initialize_machine(heapsize_words: number) {
-    heap = new Heap(heapsize_words)
-    const builtins_frame = allocate_builtin_frame()
-    const constants_frame = allocate_constant_frame()
-    heap.finalize()
+    heap = new Heap(heapsize_words, builtins, constants)
     OS = []
     PC = 0
     RTS = []
     E = heap.allocate_Environment(0)
-    E = heap.extend_Environment(builtins_frame, E)
-    E = heap.extend_Environment(constants_frame, E)
+    E = heap.extend_Environment(heap.builtins_frame, E)
+    E = heap.extend_Environment(heap.constants_frame, E)
     heap.set_machine(OS, E, RTS)
 }
 
