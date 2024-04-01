@@ -306,6 +306,24 @@ UnaryOperator
   / "~"
   / "!"
 
-BinaryOperator
+rel_op          "comparison operator"           
+  = "=="           
+  / "!="
+  / "<="
+  / ">="
+  / "<"
+  / ">"
+
+mul_op          "multiplication operator"       
+  = "*"
+  / "/"
+  / "%"
+
+add_op          "addition operator"             
   = $("+" ![+=])
   / $("-" ![-=])
+
+BinaryOperator
+  = add_op
+  / mul_op
+  / rel_op

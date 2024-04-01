@@ -25,3 +25,7 @@
 - Declaration of multiple variables in the same line;
 - Immediate nested blocks? {{}}
 - The definition of sequence is a bit odd in the grammar because Blocks and IfStatement have no EOS, but other statements do
+
+## Implementation Notes
+
+- Golang has no ternary operator: https://go.dev/doc/faq#Does_Go_have_a_ternary_form

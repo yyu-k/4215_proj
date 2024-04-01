@@ -3,9 +3,11 @@ import { parse_compile_run } from './vm';
 
 const program = `{
 i := 10;
-if (true) {
-    5;
-} 
+if 5!=3 {
+  display(5);
+} else {
+  display(10);
+}
 7 + 2;
 (5 - 4) + 2;
 3 + 10;
