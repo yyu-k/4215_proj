@@ -726,12 +726,12 @@ log:
         compile(comp.sym == '&&'
                 ? {tag: 'cond_expr',
                    pred: comp.first,
-                   cons: {tag: 'lit', val: true},
+                   cons: {tag: 'Literal', val: true},
                    alt: comp.second}
                 : {tag: 'cond_expr',
                    pred: comp.first,
                    cons: comp.second,
-                   alt: {tag: 'lit', val: false}},
+                   alt: {tag: 'Literal', val: false}},
 	            ce)
     },
 cond:
@@ -771,10 +771,6 @@ assmt:
     // store precomputed position info in ASSIGN instruction
     (comp, ce) => {
         compile(comp.expr, ce)
-        console.log('lalala')
-        console.log(comp);
-        console.log(ce)
-        console.log('lululu')
         instrs[wc++] = {tag: 'ASSIGN',
                         pos: compile_time_environment_position(
                                  ce, comp.sym)}
