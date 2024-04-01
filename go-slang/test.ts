@@ -2,6 +2,8 @@ import { parser } from './parser/parser';
 import { parse_compile_run } from './vm';
 
 const program = `{
+const test = "abcd";
+display(test);
 i := 10;
 if 5!=3 {
     display(5);

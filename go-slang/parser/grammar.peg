@@ -12,9 +12,9 @@ Statement
     = Block
     / IfStatement
     / LoopStatement
+    / ReturnStatement
     / NameDeclaration
     / FunctionDeclaration
-    / ReturnStatement
     / GoStatement
     / Expression 
 
@@ -170,13 +170,26 @@ ExpressionList
 
 //In principle should be unicode letter and unicode digit
 Identifier
-    = $ ( letter ( letter / DecimalDigit )* ) 
+    = !ReservedWord ident:$( letter ( letter / DecimalDigit )* ) {return ident}
 
 //Added DecimalLiteral
 Literal
   = NullLiteral
   / BooleanLiteral
   / DecimalLiteral
+  / StringLiteral
+
+//Strings
+StringLiteral "string"
+  = DQUO chars:(!LineTerminatorSequence [^"])* DQUO {
+      return { tag: "Literal", value: chars.join("") };
+    }
+  / BQUO chars:([^`])* BQUO {
+      return { tag: "Literal", value: chars.join("") };
+    }
+  / SQUO chars:([^']) SQUO {
+      return { tag : "Literal", value : chars.charCodeAt(0)}
+  }
 
 NullLiteral
   = NullToken { return { tag: "Literal", value: null }; }
@@ -231,7 +244,7 @@ IdentifierPart
 IdentifierStart
   = "$"
   / "_"
-  / "\\" 
+  / "\\"      
 
 // Tokens
 
@@ -251,7 +264,7 @@ ExtendsToken    = "extends"    !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
 FinallyToken    = "finally"    !IdentifierPart
 ForToken        = "for"        !IdentifierPart
-FunctionToken   = "func"   !IdentifierPart
+FunctionToken   = "func"       !IdentifierPart
 GetToken        = "get"        !IdentifierPart
 IfToken         = "if"         !IdentifierPart
 ImportToken     = "import"     !IdentifierPart
@@ -268,9 +281,54 @@ ThrowToken      = "throw"      !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 TryToken        = "try"        !IdentifierPart
 VarToken        = "var"        !IdentifierPart
-WhileToken      = "while"      !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 
+Tokens "tokens"
+  = BreakToken 
+  / CaseToken       
+  / CatchToken      
+  / ClassToken      
+  / ConstToken      
+  / ContinueToken   
+  / DebuggerToken   
+  / DefaultToken   
+  / DoToken         
+  / ElseToken       
+  / EnumToken       
+  / ExportToken     
+  / ExtendsToken    
+  / FalseToken      
+  / FinallyToken    
+  / ForToken      
+  / FunctionToken   
+  / GetToken        
+  / IfToken         
+  / ImportToken     
+  / InstanceofToken 
+  / InToken         
+  / NewToken        
+  / NullToken       
+  / ReturnToken     
+  / SetToken        
+  / SuperToken      
+  / SwitchToken     
+  / ThisToken       
+  / ThrowToken      
+  / TrueToken       
+  / TryToken        
+  / VarToken           
+  / WithToken  
+
+ReservedWord "reserved word"
+  = Tokens
+
+//Quotes
+DQUO              "double quote"                
+  = "\u0022"        // ""
+SQUO              "single quote"                
+  = "\u0027"        // ''
+BQUO              "back quote/grave accent"     
+  = "\u0060"        // ``
 
 LineTerminator
   = [\n\r\u2028\u2029]

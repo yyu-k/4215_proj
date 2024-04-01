@@ -30,4 +30,6 @@
 
 - Golang has no ternary operator: https://go.dev/doc/faq#Does_Go_have_a_ternary_form
 - while loops are a type of for loops in Golang: https://go.dev/tour/flowcontrol/3
+- String Literals are implemented on the basis that "" is the standard string, `` allows for new line characters, and '' is a single rune (the unicode code point of the character) https://yuminlee2.medium.com/golang-double-single-and-back-quotes-a347622e8081#cfa9
+- Attempts to assign keytokens are a form of parse error
 - +=, -=, ++, -- are not implemented
