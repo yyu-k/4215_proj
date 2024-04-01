@@ -16,6 +16,8 @@
 - `while` statements
 - go statements
 - Types
+- Remove all references to "lit" in the vm - changed to Literal
+- Remove extra console.log
 
 
 ## Todo

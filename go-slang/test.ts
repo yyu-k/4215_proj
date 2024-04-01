@@ -13,7 +13,12 @@ display( 100 - 5 );
 func echo(i) {
   display( i + 100 );
 }
-14;
+func test(i) {
+  i = i + 2;
+  i = i + 3;
+  return i;
+}
+display(test(3));
 go echo(i);
 }`;
 const ast = parser.parse(program)

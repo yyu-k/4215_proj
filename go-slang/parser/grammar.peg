@@ -12,18 +12,22 @@ Statement
     / IfStatement
     / NameDeclaration
     / FunctionDeclaration
+    / ReturnStatement
     / GoStatement
     / Expression 
 
 FunctionDeclaration =
-    "func" __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
+    FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
         return {
             tag: "fun",
             sym: symbol,
-            prms: params,
+            prms: params.map(x => x.sym),
             body,
         }
     }
+
+ReturnStatement =
+    ReturnToken __ exp:Expression { return {tag : "ret", expr : exp} }
 
 Block
     = "{" __ body:(Sequence)? "}" {
@@ -35,19 +39,19 @@ Block
 
 IfStatement 
     = IfToken __ pred:Expression __ cons:Block altBlk:(__ ElseToken __ alt: Block {return alt})|0..1| {
-      let processedAlt;
-      altBlk = altBlk[0];
-      if (altBlk) {
-        processedAlt = altBlk.body;
-      } else {
-        processedAlt = { tag: "seq", stmts: [] }
-      }
-      return {
-          tag : "cond",
-          pred: pred,
-          cons: cons.body,
-          alt: processedAlt
-      }
+        let processedAlt;
+        altBlk = altBlk[0];
+        if (altBlk) {
+          processedAlt = altBlk.body;
+        } else {
+          processedAlt = { tag: "seq", stmts: [] }
+        }
+        return {
+            tag : "cond",
+            pred: pred,
+            cons: cons.body,
+            alt: processedAlt
+        }
     }
 
 NameDeclaration "name declaration"
@@ -56,7 +60,7 @@ NameDeclaration "name declaration"
     / ShortDeclaration
 
 ConstantDeclaration "const declaration"
-    = ConstToken __ symbol:Identifier __ "=" !"=" __ expression:Expression   {
+    = ConstToken __ symbol:Identifier __ Assmt __ expression:Expression   {
         return {
             tag: "const",
             sym: symbol,
@@ -65,7 +69,7 @@ ConstantDeclaration "const declaration"
     }
 
 VariableDeclaration "var declaration"
-    = VarToken __ symbol:Identifier __ "=" !"=" __ expression:Expression   {
+    = VarToken __ symbol:Identifier __ Assmt __ expression:Expression   {
         return {
             tag: "var",
             sym: symbol,
@@ -92,11 +96,12 @@ GoStatement "go statement"
     }
 
 Expression
-    = BinaryExpression
+    = VariableAssignment
+    / BinaryExpression
     / UnaryExpression
     / CallExpression
     / PrimaryExpression
-
+    
 BinaryExpression
     = e1:UnaryExpression __ symbol:BinaryOperator __ e2:BinaryExpression {
         return {
@@ -117,6 +122,15 @@ UnaryExpression
         }
     }
     / CallExpression
+  
+VariableAssignment "assignment"
+  = symbol:Identifier __ Assmt __ exp:Expression { 
+    return {
+      tag : 'assmt',
+      sym : symbol,
+      expr : exp
+    } 
+  }
 
 CallExpression
     = fn:PrimaryExpression __ args:Arguments {
@@ -139,7 +153,7 @@ ExpressionList
 
 //In principle should be unicode letter and unicode digit
 Identifier
-    = $ ( letter ( letter / DecimalDigit )*) 
+    = $ ( letter ( letter / DecimalDigit )* ) 
 
 //Added DecimalLiteral
 Literal
@@ -221,7 +235,7 @@ ExtendsToken    = "extends"    !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
 FinallyToken    = "finally"    !IdentifierPart
 ForToken        = "for"        !IdentifierPart
-FunctionToken   = "function"   !IdentifierPart
+FunctionToken   = "func"   !IdentifierPart
 GetToken        = "get"        !IdentifierPart
 IfToken         = "if"         !IdentifierPart
 ImportToken     = "import"     !IdentifierPart
@@ -272,6 +286,9 @@ Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 
 EOS
   = __ ";"
+
+Assmt
+  = "=" !"="
 
 ShortAssmt      
   = ":="
