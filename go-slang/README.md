@@ -16,8 +16,7 @@
 - `while` statements
 - go statements
 - Types
-- Remove all references to "lit" in the vm - changed to Literal
-- Remove extra console.log
+- Fix the compilation of the 'log' tag - should not work even in the original vm
 
 
 ## Todo
