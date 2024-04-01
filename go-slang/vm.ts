@@ -1,30 +1,6 @@
 import { Heap } from './heap'
-import { arity, error, peek, push, word_to_string } from './utilities'
-
-const type_check_generator = (type: string) => {
-    return (x: unknown) => {
-        if (typeof x === type) {
-            return true
-        }
-        return false
-    }
-}
-const is_boolean = type_check_generator('boolean')
-const is_number = type_check_generator('number')
-const is_undefined = type_check_generator('undefined')
-const is_null = type_check_generator('null')
-
-const JS_value_to_address = (heap: Heap, x: unknown) => {
-    return is_boolean(x)
-    ? (x ? heap.values.True : heap.values.False)
-    : is_number(x)
-    ? heap.allocate_Number(x as number)
-    : is_undefined(x)
-    ? heap.values.Undefined
-    : is_null(x)
-    ? heap.values.Null
-    : "unknown word tag: " + word_to_string(x as number)
-}
+import { Machine } from './machine'
+import { arity, error, push } from './utilities'
 
 // ************************
 // compile-time environment
@@ -53,43 +29,46 @@ const value_index = (frame: string[], x: string) => {
 // arguments directly from the operand stack,
 // to save the creation of an intermediate
 // argument array
-const builtin_implementation = {
-    display       : () => {
-                        const address = OS.pop()!
+type BuiltinFunction = (machine: Machine, heap: Heap, ...args: unknown[]) => unknown
+const builtin_implementation: Record<string, BuiltinFunction> = {
+    display       : (machine, heap) => {
+                        const address = machine.OS.pop()!
                         console.log(heap.address_to_JS_value(address))
                         return address
                     },
-    error         : () => error(heap.address_to_JS_value(OS.pop()!)),
-    pair          : () => {
-                        const tl = OS.pop()!
-                        const hd = OS.pop()!
+    error         : (machine, heap) => error(heap.address_to_JS_value(machine.OS.pop()!)),
+    pair          : (machine, heap) => {
+                        const tl = machine.OS.pop()!
+                        const hd = machine.OS.pop()!
                         return heap.allocate_Pair(hd, tl)
                     },
-    is_pair       : () => heap.is_Pair(OS.pop()!) ? heap.values.True : heap.values.False,
-    head          : () => heap.get_child(OS.pop()!, 0),
-    tail          : () => heap.get_child(OS.pop()!, 1),
-    is_null       : () => heap.is_Null(OS.pop()!) ? heap.values.True : heap.values.False,
-    set_head      : () => {
-                        const val = OS.pop()!
-                        const p = OS.pop()!
+    is_pair       : (machine, heap) => heap.is_Pair(machine.OS.pop()!) ? heap.values.True : heap.values.False,
+    head          : (machine, heap) => heap.get_child(machine.OS.pop()!, 0),
+    tail          : (machine, heap) => heap.get_child(machine.OS.pop()!, 1),
+    is_null       : (machine, heap) => heap.is_Null(machine.OS.pop()!) ? heap.values.True : heap.values.False,
+    set_head      : (machine, heap) => {
+                        const val = machine.OS.pop()!
+                        const p = machine.OS.pop()!
                         heap.set_child(p, 0, val)
                     },
-    set_tail      : () => {
-                        const val = OS.pop()!
-                        const p = OS.pop()!
+    set_tail      : (machine, heap) => {
+                        const val = machine.OS.pop()!
+                        const p = machine.OS.pop()!
                         heap.set_child(p, 1, val)
                     }
 }
 
 const builtins = {}
-const builtin_array: (() => {})[] = []
+export const builtin_array: BuiltinFunction[] = []
 {
     let i = 0
     for (const key in builtin_implementation) {
         builtins[key] =
-            { tag:   'BUILTIN',
-              id:    i,
-              arity: arity(builtin_implementation[key])
+            {
+                tag:   'BUILTIN',
+                id:    i,
+                // TODO: this isn't being used?
+                arity: arity(builtin_implementation[key])
             }
         builtin_array[i++] = builtin_implementation[key]
     }
@@ -294,9 +273,8 @@ const compile = (comp, ce) => {
     compile_comp[comp.tag](comp, ce)
 }
 
-// compile program into instruction array instrs,
-// after initializing wc and instrs
-export const compile_program = (program) => {
+// compile program into instruction array instrs, after initializing wc and instrs
+export function compile_program(program: any) {
     wc = 0
     instrs = []
     compile(program, global_compile_environment)
@@ -305,208 +283,10 @@ export const compile_program = (program) => {
     return instrs
 }
 
-// **********************
-// operators and builtins
-// **********************/
+export function run(instrs: any[], heap_size: number) {
+    const heap = new Heap(heap_size, builtins, constants)
+    // TODO: allow for creation of new machines and time-slicing
+    const machine = new Machine(instrs, heap)
 
-const binop_microcode = {
-    '+': (x, y)   => (is_number(x) && is_number(y))
-                     // || (is_string(x) && is_string(y))
-                     ? x + y
-                     : error([x,y], "+ expects two numbers" +
-                                    " or two strings, got:"),
-    // todo: add error handling to JS for the following, too
-    '*':   (x, y) => x * y,
-    '-':   (x, y) => x - y,
-    '/':   (x, y) => x / y,
-    '%':   (x, y) => x % y,
-    '<':   (x, y) => x < y,
-    '<=':  (x, y) => x <= y,
-    '>=':  (x, y) => x >= y,
-    '>':   (x, y) => x > y,
-    '==': (x, y) => x === y,
-    '!=': (x, y) => x !== y
-}
-
-// v2 is popped before v1
-const apply_binop = (heap: Heap, op: string, v2: number, v1: number) =>
-    JS_value_to_address(heap,
-        binop_microcode[op](heap.address_to_JS_value(v1),
-                            heap.address_to_JS_value(v2)))
-
-const unop_microcode = {
-    '-unary': x => - x,
-    '!'     : x => ! x
-}
-
-const apply_unop = (op: string, v: number) =>
-    JS_value_to_address(heap, unop_microcode[op](heap.address_to_JS_value(v)))
-
-const apply_builtin = (builtin_id: number) => {
-    // console.log(builtin_id, "apply_builtin: builtin_id:")
-    const result = builtin_array[builtin_id]()
-    OS.pop() // pop fun
-    push(OS, result)
-}
-
-// *******
-// machine
-// *******
-
-// machine registers
-let OS: number[]   // JS array (stack) of words (Addresses, word-encoded literals, numbers)
-let PC: number     // JS number
-let E: number      // heap Address
-let RTS: number[]  // JS array (stack) of Addresses
-// TODO: Remove this global heap
-let heap: Heap
-
-const microcode = {
-LDC:
-    instr =>
-    push(OS, JS_value_to_address(heap, instr.val)),
-UNOP:
-    instr =>
-    push(OS, apply_unop(instr.sym, OS.pop()!)),
-BINOP:
-    instr =>
-    push(OS,
-         apply_binop(heap, instr.sym, OS.pop()!, OS.pop()!)),
-POP:
-    instr =>
-    OS.pop(),
-JOF:
-    instr =>
-    PC = heap.is_True(OS.pop()!) ? PC : instr.addr,
-GOTO:
-    instr =>
-    PC = instr.addr,
-ENTER_SCOPE:
-    instr => {
-        push(RTS, heap.allocate_Blockframe(E))
-        const frame_address = heap.allocate_Frame(instr.num)
-        // AMENDED
-        push(RTS, frame_address); //prevent frame_address from getting deallocated when extending environment
-        E = heap.extend_Environment(frame_address, E)
-        RTS.pop(); //pop frame_address
-        for (let i = 0; i < instr.num; i++) {
-            heap.set_child(frame_address, i, heap.values.Unassigned)
-        }
-    },
-EXIT_SCOPE:
-    instr =>
-    E = heap.get_Blockframe_environment(RTS.pop()!),
-LD:
-    instr => {
-        const val = heap.get_Environment_value(E, instr.pos)
-        if (heap.is_Unassigned(val))
-            error("access of unassigned variable")
-        push(OS, val)
-    },
-ASSIGN:
-    instr =>
-    heap.set_Environment_value(E, instr.pos, peek(OS,0)),
-LDF:
-    instr => {
-        const closure_address =
-                  heap.allocate_Closure(
-                      instr.arity, instr.addr, E)
-        push(OS, closure_address)
-    },
-CALL:
-    instr => {
-        const arity = instr.arity
-        const fun = peek(OS, arity)
-        if (heap.is_Builtin(fun)) {
-            return apply_builtin(heap.get_Builtin_id(fun))
-        }
-        const new_PC = heap.get_Closure_pc(fun)
-        const new_frame = heap.allocate_Frame(arity)
-        for (let i = arity - 1; i >= 0; i--) {
-            heap.set_child(new_frame, i, OS.pop()!)
-        }
-        OS.pop() // pop fun
-        //AMENDED
-        //need to make sure that new_frame does not get deallocated before CALL exits
-        //since new_frame is not currently referenced anywhere
-        push(RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
-        const callframe_address = heap.allocate_Callframe(E, PC)
-        RTS.pop(); //remove new_frame from RTS
-        push(RTS, callframe_address);
-        push(RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
-        E = heap.extend_Environment(
-                new_frame,
-                heap.get_Closure_environment(fun))
-        RTS.pop(); //remove new_frame from RTS
-        PC = new_PC
-    },
-TAIL_CALL:
-    instr => {
-        const arity = instr.arity
-        const fun = peek(OS, arity)
-        if (heap.is_Builtin(fun)) {
-            return apply_builtin(heap.get_Builtin_id(fun))
-        }
-        const new_PC = heap.get_Closure_pc(fun)
-        const new_frame = heap.allocate_Frame(arity)
-        for (let i = arity - 1; i >= 0; i--) {
-            heap.set_child(new_frame, i, OS.pop()!)
-        }
-        OS.pop() // pop fun
-        // AMENDED
-        push(RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
-        // don't push on RTS here
-        E = heap.extend_Environment(
-                new_frame,
-                heap.get_Closure_environment(fun))
-        RTS.pop(); //remove new_frame from RTS
-        PC = new_PC
-    },
-RESET:
-    instr => {
-        // keep popping...
-        const top_frame = RTS.pop()!
-        if (heap.is_Callframe(top_frame)) {
-            // ...until top frame is a call frame
-            PC = heap.get_Callframe_pc(top_frame)
-            E = heap.get_Callframe_environment(top_frame)
-        } else {
-	    PC--
-        }
-    }
-}
-
-// running the machine
-
-// set up registers, including free list
-function initialize_machine(heapsize_words: number) {
-    heap = new Heap(heapsize_words, builtins, constants)
-    OS = []
-    PC = 0
-    RTS = []
-    E = heap.allocate_Environment(0)
-    E = heap.extend_Environment(heap.builtins_frame, E)
-    E = heap.extend_Environment(heap.constants_frame, E)
-    heap.set_machine(OS, E, RTS)
-}
-
-export function run(_instrs: unknown[], heapsize_words: number) {
-    wc = 0
-    instrs = _instrs
-    initialize_machine(heapsize_words)
-    // print_code()
-    while (instrs[PC].tag !== 'DONE') {
-        //heap.console.log()
-        //console.log(PC, "PC: ")
-        //console.log(instrs[PC].tag, "instr: ")
-        // print_OS("\noperands:            ");
-        //print_RTS("\nRTS:            ");
-        const instr = instrs[PC++]
-        //console.log(instrs[PC].tag, "next instruction: ")
-        microcode[instr.tag](instr)
-        //heap.console.log()
-    }
-    //console.log(OS, "\nfinal operands:           ")
-    //print_OS()
-    return heap.address_to_JS_value(peek(OS, 0))
+    return machine.run()
 }

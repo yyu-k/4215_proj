@@ -2,6 +2,7 @@
 // HEAP
 // *************************/
 
+import { Machine } from "./machine";
 import { error, word_to_string } from "./utilities";
 
 const WORD_SIZE = 8
@@ -133,10 +134,8 @@ export class Heap {
         return frame_address
     }
 
-    set_machine(OS: number[], E: number, RTS: number[]) {
-        this.machine.OS = OS
-        this.machine.E = E
-        this.machine.RTS = RTS
+    set_machine(machine: Machine) {
+        this.machine = machine
     }
 
     // allocate allocates a given number of words

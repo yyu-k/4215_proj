@@ -7,7 +7,7 @@ export function error(objects: any, message?: string) {
     throw new Error(message)
 }
 
-export function arity(f: (...args: unknown[]) => {}) {
+export function arity(f: (...args: any[]) => any) {
     return f.length
 }
 
