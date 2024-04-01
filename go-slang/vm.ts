@@ -1,5 +1,3 @@
-import { parser } from "./parser/parser";
-
 const error = (objects: any, message?: string) => {
     if (typeof message == 'undefined') {
         message = objects
@@ -848,11 +846,13 @@ const compile = (comp, ce) => {
 
 // compile program into instruction array instrs,
 // after initializing wc and instrs
-const compile_program = program => {
+export const compile_program = program => {
     wc = 0
     instrs = []
     compile(program, global_compile_environment)
     instrs[wc] = {tag: 'DONE'}
+
+    return instrs
 }
 
 // **********************
@@ -1091,7 +1091,9 @@ function initialize_machine(heapsize_words) {
     E = heap_Environment_extend(constants_frame, E)
 }
 
-function run(heapsize_words) {
+export function run(_instrs, heapsize_words: number) {
+    wc = 0
+    instrs = _instrs
     initialize_machine(heapsize_words)
     // print_code()
     while (! (instrs[PC].tag === 'DONE')) {
@@ -1108,15 +1110,4 @@ function run(heapsize_words) {
     //console.log(OS, "\nfinal operands:           ")
     //print_OS()
     return address_to_JS_value(peek(OS, 0))
-}
-
-// parse_compile_run on top level
-// * parse input to json syntax tree
-// * compile syntax tree into code
-// * run code
-
-export const parse_compile_run =
-    (program: string, heapsize_words: number) => {
-        compile_program(parser.parse(program))
-        return run(heapsize_words)
 }

@@ -1,7 +1,7 @@
 import { parser } from './parser/parser';
-import { parse_compile_run } from './vm';
+import { compile_program, run } from './vm';
 
-const program = `{
+const program_str = `{
 const test = "abcd";
 display(test);
 i := 10;
@@ -27,6 +27,8 @@ func test(a,b) {
 display(test(30, 71));
 go echo(i);
 }`;
-const ast = parser.parse(program)
-console.log(JSON.stringify(ast.body.stmts, null, 2));
-console.log(parse_compile_run(program, 50000));
+
+const ast = parser.parse(program_str)
+const instructions = compile_program(ast)
+console.log(JSON.stringify(ast.body.stmts, null, 2))
+console.log(run(instructions, 50000))
