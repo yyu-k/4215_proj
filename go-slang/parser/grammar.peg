@@ -147,9 +147,11 @@ Arguments
     = "(" __ exprs:ExpressionList __ ")" { return exprs }
 
 ExpressionList
-    = expr:Expression exprs:( __ "," __ $ Expression )* {
-        return [expr].concat(exprs)
-    }
+    = expr:Expression exprs:( __ "," __ exp:Expression {return exp})* {
+        return [expr].concat(exprs).filter(x=>x!=null)
+      }
+    / expr:Expression? {return [expr].filter(x => x!=null)}
+
 
 //In principle should be unicode letter and unicode digit
 Identifier
