@@ -5,19 +5,19 @@
 ### Completed
 
 - Blocks
-- Constant/variable declarations
+- Constant/variable declarations, reassignments
 - Function calls
 - `if`/`else` statements
 - Expression statements
+- `for` statements when they carry out the same function as `while`
+- function declarations, returns
 
 ### Todo
 
-- Function declarations
-- `while` statements
-- go statements
+- Other types of `for` statements 
+- `go` statements
 - Types
 - Fix the compilation of the 'log' tag - should not work even in the original vm
-
 
 ## Todo
 
@@ -29,3 +29,5 @@
 ## Implementation Notes
 
 - Golang has no ternary operator: https://go.dev/doc/faq#Does_Go_have_a_ternary_form
+- while loops are a type of for loops in Golang: https://go.dev/tour/flowcontrol/3
+- +=, -=, ++, -- are not implemented

@@ -4,12 +4,14 @@ Sequence
     // TODO: is this correct?
     / __ a:FunctionDeclaration __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:IfStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
+    / __ a:LoopStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:Statement __ EOS __ b:Sequence { return [a].concat(b).filter(x=>x!=null) }
     / a:Statement? { return a }
 
 Statement 
     = Block
     / IfStatement
+    / LoopStatement
     / NameDeclaration
     / FunctionDeclaration
     / ReturnStatement
@@ -36,6 +38,19 @@ Block
             body: { tag: "seq", stmts: body },
         }
     }
+
+LoopStatement "loops"
+  = WhileStatement
+
+WhileStatement "while statement" //while is not used in Golang
+  = ForToken __ pred:Expression __ body:Block {
+      return {
+        tag : "while",
+        pred,
+        body
+      }
+    }
+
 
 IfStatement 
     = IfToken __ pred:Expression __ cons:Block altBlk:(__ ElseToken __ alt: Block {return alt})|0..1| {
@@ -228,7 +243,6 @@ ConstToken      = "const"      !IdentifierPart
 ContinueToken   = "continue"   !IdentifierPart
 DebuggerToken   = "debugger"   !IdentifierPart
 DefaultToken    = "default"    !IdentifierPart
-DeleteToken     = "delete"     !IdentifierPart
 DoToken         = "do"         !IdentifierPart
 ElseToken       = "else"       !IdentifierPart
 EnumToken       = "enum"       !IdentifierPart
@@ -253,9 +267,7 @@ ThisToken       = "this"       !IdentifierPart
 ThrowToken      = "throw"      !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 TryToken        = "try"        !IdentifierPart
-TypeofToken     = "typeof"     !IdentifierPart
 VarToken        = "var"        !IdentifierPart
-VoidToken       = "void"       !IdentifierPart
 WhileToken      = "while"      !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 
@@ -296,14 +308,8 @@ ShortAssmt
   = ":="
 
 UnaryOperator
-  = $DeleteToken
-  / $VoidToken
-  / $TypeofToken
-  / "++"
-  / "--"
-  / $("+" !"=")
+  = $("+" !"=")
   / $("-" !"=")
-  / "~"
   / "!"
 
 rel_op          "comparison operator"           
