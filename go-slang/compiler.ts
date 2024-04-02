@@ -84,7 +84,7 @@ nam:
     },
 unop:
     (comp, ce) => {
-        compile(comp.first, ce)
+        compile(comp.expr, ce)
         instrs[wc++] = {tag: 'UNOP', sym: comp.sym}
     },
 binop:

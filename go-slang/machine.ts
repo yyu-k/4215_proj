@@ -57,8 +57,8 @@ const apply_binop = (heap: Heap, op: string, v2: number, v1: number) =>
                             heap.address_to_JS_value(v2)))
 
 const unop_microcode = {
-    '-unary': x => - x,
-    '!'     : x => ! x
+    '-': x => - x,
+    '!': x => ! x
 }
 
 const apply_unop = (heap: Heap, op: string, v: number) =>
