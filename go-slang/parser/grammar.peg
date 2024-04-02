@@ -70,8 +70,47 @@ Block
 LoopStatement "loops"
   = WhileStatement
 
+SimpleStatement
+    = NameDeclaration
+    / Expression
+
 WhileStatement "while statement" //while is not used in Golang
-  = ForToken __ pred:Expression __ body:Block {
+  = ForToken __
+      init:SimpleStatement? __ SEMICOLON __ 
+      pred:Expression? __ SEMICOLON __
+      post:SimpleStatement? __
+    body:Block 
+    {
+      let while_object;
+      //If there is no predicate, the predicate is true (infinite loop)
+      if (pred) {
+        while_object = {tag : "while", pred, body};
+      } else {
+        const true_object = {"tag": "lit", "val": true};
+        while_object = {tag : "while", pred : true_object, body};
+      }
+      //the post statement is to be executed at the end of the loop, if it is executed
+      if (post) {
+        //deal with empty bodies
+        if (while_object.body.body.stmts === null) {
+          while_object.body.body.stmts = [post];
+        } else {
+          while_object.body.body.stmts.push(post);
+        }
+      }
+      //the init is executed once before evaluating the condition
+      if (init) {
+        //The variable has to be initialized within its own block
+        let body_array = [init, while_object];
+        return {
+            tag: "blk",
+            body: { tag: "seq", stmts: body_array },
+        }
+      } else {
+        return while_object;
+      }
+    }
+  / ForToken __ pred:Expression __ body:Block {
       return {
         tag : "while",
         pred,
@@ -372,6 +411,8 @@ ReservedWord "reserved word"
 //Special Symbols
 DOT
   = "."
+SEMICOLON
+  = ";"
 
 //Quotes
 DQUO              "double quote"                
