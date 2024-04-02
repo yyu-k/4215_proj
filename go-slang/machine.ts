@@ -217,7 +217,7 @@ export class Machine {
     }
 
     run() {
-        this.heap.set_machine(this)
+        this.heap.add_machine(this)
 
         while (this.instrs[this.PC].tag !== 'DONE') {
             //heap.console.log()

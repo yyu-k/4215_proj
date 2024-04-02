@@ -63,12 +63,8 @@ export class Heap {
     builtins_frame: number
     constants_frame: number
 
-    // machine registers
-    machine: {
-        OS: number[]
-        E: number
-        RTS: number[]
-    }
+    // list of attached machines
+    machines: Set<Machine>
 
     // allocates a heap of given size (in bytes) and returns a DataView of that
     constructor(words: number, builtins: Builtins, constants: Constants) {
@@ -95,7 +91,7 @@ export class Heap {
         this.values.Unassigned = this.allocate(Unassigned_tag, 1)
         this.values.Undefined = this.allocate(Undefined_tag, 1)
 
-        this.machine = {} as any
+        this.machines = new Set()
 
         this.builtins_frame = this.allocate_builtin_frame(builtins)
         this.constants_frame = this.allocate_constant_frame(constants)
@@ -134,8 +130,8 @@ export class Heap {
         return frame_address
     }
 
-    set_machine(machine: Machine) {
-        this.machine = machine
+    add_machine(machine: Machine) {
+        this.machines.add(machine)
     }
 
     // allocate allocates a given number of words
@@ -223,10 +219,14 @@ export class Heap {
     mark_sweep() {
         // console.log('Running mark_sweep');
         //Deal with edge case where the memory runs out before the first environment gets allocated on the HEAP
-        if (this.machine.E === undefined) {
-            error("heap memory exhausted")
+        for (const machine of this.machines) {
+            if (machine.E === undefined) {
+                error("heap memory exhausted")
+            }
         }
-        const ROOTS = [...this.machine.OS, this.machine.E, ...this.machine.RTS] //This should be an array of addresses
+        //This should be an array of addresses
+        const ROOTS = Array.from(this.machines)
+            .flatMap(machine => [...machine.OS, machine.E, ...machine.RTS])
         // console.log('OS-start of mark sweep', OS);
         // console.log('RTS-start of mark sweep', RTS);
         // console.log('E-start of mark sweep', E);
