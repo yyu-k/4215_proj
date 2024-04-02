@@ -264,7 +264,7 @@ DONE: () => {}
 }
 
 export class Machine {
-    instrs: any[]
+    instrs: Instruction[]
     // machine registers
     OS: number[]   // JS array (stack) of words (Addresses, word-encoded literals, numbers)
     PC: number     // JS number
@@ -273,7 +273,7 @@ export class Machine {
     output: any[]
     heap: Heap
 
-    constructor(instrs: any[], heap: Heap) {
+    constructor(instrs: Instruction[], heap: Heap) {
         this.instrs = instrs
         this.OS = []
         this.PC = 0

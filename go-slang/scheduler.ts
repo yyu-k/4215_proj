@@ -1,8 +1,8 @@
 import { builtins, constants } from "./builtins"
 import { Heap } from "./heap"
-import { Machine } from "./machine"
+import { Instruction, Machine } from "./machine"
 
-export function run(instrs: any[], heap_size: number) {
+export function run(instrs: Instruction[], heap_size: number) {
     const heap = new Heap(heap_size, builtins, constants)
     const machines: Machine[] = []
     const machine = new Machine(instrs, heap)
