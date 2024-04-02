@@ -139,6 +139,14 @@ app:
         }
         instrs[wc++] = {tag: 'CALL', arity: comp.args.length}
     },
+go:
+    (comp, ce) => {
+        compile(comp.fun, ce)
+        for (let arg of comp.args) {
+            compile(arg, ce)
+        }
+        instrs[wc++] = {tag: 'GO', arity: comp.args.length}
+    },
 assmt:
     // store precomputed position info in ASSIGN instruction
     (comp, ce) => {

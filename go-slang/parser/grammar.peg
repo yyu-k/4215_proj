@@ -229,9 +229,9 @@ ShortDeclaration "short var declaration"
 GoStatement "go statement"
     = "go" __ call:CallExpression {
         return {
-            ...call,
-            // TODO: handle in VM
-            go: true,
+            tag: "go",
+            fun: call.fun,
+            args: call.args,
         }
     }
 

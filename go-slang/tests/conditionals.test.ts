@@ -1,14 +1,12 @@
 import { parser } from '../parser/parser';
 import { compile_program } from '../compiler';
-import { run } from '../global-machine';
+import { run } from '../scheduler';
 
 const heap_size = 50000
 const compile_and_run = (program_str : string) => {
     const ast = parser.parse(program_str);
     const instructions = compile_program(ast) ;
-    // TODO: check that output is correct
-    const [_output, final_value] = run(instructions, heap_size)
-    return final_value
+    return run(instructions, heap_size)
 }
 
 describe('if statements should work', () => {
@@ -20,7 +18,9 @@ describe('if statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(5);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 5])
     });
     test('if block should not execute if predicate is false', () => {
         const program1 = `{
@@ -30,7 +30,9 @@ describe('if statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(0);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 0])
     });
 });
 
@@ -45,7 +47,9 @@ describe('if statements + else statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(7);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 7])
     });
     test('if block should execute if predicate is true', () => {
         const program1 = `{
@@ -57,7 +61,9 @@ describe('if statements + else statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(6);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 6])
     });
 });
 
@@ -72,7 +78,9 @@ describe('if statements + else if statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(6);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 6])
     });
     test('else if block should execute if predicate for if is false, for else if is true', () => {
         const program1 = `{
@@ -84,7 +92,9 @@ describe('if statements + else if statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(7);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 7])
     });
     test('neither if block nor else if block should execute if both blocks are false', () => {
         const program1 = `{
@@ -96,7 +106,9 @@ describe('if statements + else if statements should work', () => {
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(0);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 0])
     });
 });
 
@@ -114,7 +126,9 @@ describe('if statements + else if statements + else statements should work', () 
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(6);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 6])
     });
     test('else if block should execute if predicate for if is false, for else if is true', () => {
         const program1 = `{
@@ -128,7 +142,9 @@ describe('if statements + else if statements + else statements should work', () 
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(7);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 7])
     });
     test('else block should execute when both if block and else if block have false predicates', () => {
         const program1 = `{
@@ -142,7 +158,9 @@ describe('if statements + else if statements + else statements should work', () 
                         }
                         x;
                         }`
-        expect(compile_and_run(program1)).toBe(9);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 9])
     });
 });
 
@@ -161,7 +179,9 @@ describe('multiple else if statements should work', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(7);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 7])
     });
     test('a subsequent else if block will execute if its predicate is true, and the earlier predicates are not', () => {
         const program1 = `{
@@ -177,7 +197,9 @@ describe('multiple else if statements should work', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(11);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 11])
     });
 });
 
@@ -200,7 +222,9 @@ describe('nested if statements should work', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(15);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 15])
     });
     test('nesting if else within else if', () => {
         const program1 = `{
@@ -224,7 +248,9 @@ describe('nested if statements should work', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(18);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 18])
     });
     test('nesting if else within else ', () => {
         const program1 = `{
@@ -250,7 +276,9 @@ describe('nested if statements should work', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(200);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 200])
     });
 });
 
@@ -269,7 +297,9 @@ describe('optional simple statement can be added before the predicate', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(15);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 15])
     });
     test('variables declared in simple statement are not accessible outside', () => {
         const program1 = `{
@@ -285,7 +315,9 @@ describe('optional simple statement can be added before the predicate', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(0);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 0])
     });
     test('else if statement can use a simple statement as well', () => {
         const program1 = `{
@@ -299,6 +331,8 @@ describe('optional simple statement can be added before the predicate', () => {
                         }
                         x;
                     }`
-        expect(compile_and_run(program1)).toBe(13);
+        const result = compile_and_run(program1)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 13])
     });
 });

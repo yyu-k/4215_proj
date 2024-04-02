@@ -154,6 +154,51 @@ CALL:
         machine.RTS.pop(); //remove new_frame from RTS
         machine.PC = new_PC
     },
+GO:
+    (machine, heap, instr) => {
+        const arity = instr.arity
+        const fun = peek(machine.OS, arity)
+
+        // Create new machine for `go` statement
+        const new_machine = new Machine(machine.instrs, heap)
+
+        // For builtins, we don't need to create a separate call frame
+        if (heap.is_Builtin(fun)) {
+            // Shift function and arguments to new machine's operand stack
+            new_machine.OS = machine.OS.slice(-arity)
+            machine.OS = machine.OS.slice(0, -1-arity)
+            apply_builtin(new_machine, heap, heap.get_Builtin_id(fun))
+            new_machine.PC = new_machine.instrs.length - 1
+        } else {
+            const new_PC = heap.get_Closure_pc(fun)
+            const new_frame = heap.allocate_Frame(arity)
+            for (let i = arity - 1; i >= 0; i--) {
+                heap.set_child(new_frame, i, machine.OS.pop()!)
+            }
+            machine.OS.pop() // pop fun
+
+            //need to make sure that new_frame does not get deallocated before CALL exits
+            //since new_frame is not currently referenced anywhere
+            push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
+            const callframe_address = heap.allocate_Callframe(
+                // copy current environment
+                // TODO: check if this is correct
+                machine.E,
+                // set PC to DONE after returning from "function call"
+                machine.instrs.length - 1
+            )
+            new_machine.RTS.pop(); //remove new_frame from RTS
+            push(new_machine.RTS, callframe_address);
+            push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
+            new_machine.E = heap.extend_Environment(
+                    new_frame,
+                    heap.get_Closure_environment(fun))
+            new_machine.RTS.pop(); //remove new_frame from RTS
+            new_machine.PC = new_PC
+        }
+
+        return { type: 'machine', machine: new_machine }
+    },
 TAIL_CALL:
     (machine, heap, instr) => {
         const arity = instr.arity
@@ -214,17 +259,21 @@ export class Machine {
         this.E = heap.extend_Environment(heap.constants_frame, this.E)
 
         this.heap = heap
+        heap.add_machine(this)
     }
 
     is_finished() {
         return this.instrs[this.PC].tag === 'DONE'
     }
 
-    run(num_instructions: number) {
+    run(num_instructions: number): undefined | { type: 'machine', machine: Machine } {
         let instructions_ran = 0
         while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
-            microcode[instr.tag](this, this.heap, instr)
+            const result = microcode[instr.tag](this, this.heap, instr)
+            if (typeof result === 'object' && result != null && "type" in result) {
+                return result as { type: 'machine', machine: Machine }
+            }
             instructions_ran++
         }
     }
