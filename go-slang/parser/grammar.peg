@@ -1,5 +1,53 @@
 //Convenience Functions
 {
+  class Component {
+    constructor(tag) {
+      this.tag = tag;
+    }
+  }
+
+  class SequenceComp extends Component {
+    //body is expected to be an array of Component objects
+    constructor(body) {
+      super("seq");
+      this.stmts = body;
+    }
+  }
+
+  class BlockComp extends Component {
+    //body is expected to be an array of Component objects
+    constructor(body) {
+      super("blk");
+      this.body = new SequenceComp(body);
+    }
+  }
+
+  class CondComp extends Component {
+    //pred is expected to be an expression
+    //consBlk is expected to be a block
+    //altBlk is expected to be a block
+    constructor(pred, consBlk, altBlk) {
+      super("cond");
+      this.pred = pred;
+      this.cons = consBlk.body;
+      this.alt = altBlk.body;
+    }
+  }
+
+  class CondBlockComp extends BlockComp {
+    //This is a special component used to make implicit blocks for conditional components easier to implement
+    //The VM does not use this Component
+    //cond is expected to be a CondComp
+    constructor(cond, stmt) {
+      if (stmt) {
+        super([stmt, cond]);
+      } else {
+        super([cond]);
+      }
+      this.cond = cond;
+    }
+  }
+
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
@@ -8,6 +56,18 @@
         first: result,
         second: element[3]
       };
+    }, head);
+  }
+
+  function buildNestedIf(head, tail) {
+    return tail.reduce(function(result, element) {
+      //element is either a CondBlockComp or a BlockComp
+      if (element.cond !== undefined) {
+        result.cond.alt = element;
+      } else {
+        result.cond.alt = element.body;
+      }
+      return element;
     }, head);
   }
 }
@@ -61,10 +121,7 @@ ReturnStatement =
 
 Block
     = "{" __ body:(Sequence)? "}" {
-        return {
-            tag: "blk",
-            body: { tag: "seq", stmts: body },
-        }
+        return new BlockComp(body);
     }
 
 LoopStatement "loops"
@@ -118,23 +175,24 @@ WhileStatement "while statement" //while is not used in Golang
       }
     }
 
-
-IfStatement 
-    = IfToken __ pred:Expression __ cons:Block altBlk:(__ ElseToken __ alt: Block {return alt})|0..1| {
-        let processedAlt;
-        altBlk = altBlk[0];
-        if (altBlk) {
-          processedAlt = altBlk.body;
-        } else {
-          processedAlt = { tag: "seq", stmts: [] }
-        }
-        return {
-            tag : "cond",
-            pred: pred,
-            cons: cons.body,
-            alt: processedAlt
-        }
+IfStatement
+  = main:IfBlock
+    el:(__ ElseToken __ blk:( IfBlock / Block ){return blk})*
+    {
+      buildNestedIf(main, el);
+      return main;
     }
+
+IfBlock 
+    = IfToken __ stmt:(stmt:SimpleStatement __ SEMICOLON __ {return stmt})? 
+    __ pred:Expression __ cons:Block 
+      {
+        const cond = new CondComp(pred, cons, new BlockComp([]));
+        if (stmt === undefined) {
+          stmt = null;
+        }
+        return new CondBlockComp(cond, stmt);
+      }
 
 NameDeclaration "name declaration"
     = ConstantDeclaration

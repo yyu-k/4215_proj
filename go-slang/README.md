@@ -7,14 +7,17 @@
 - Blocks
 - Constant/variable declarations, reassignments
 - Function calls
-- `if`/`else` statements
+- `if`/`else`/`else if` statements, including the optional simple statement
 - Expression statements
-- `for` statements when they carry out the same function as `while`
+- `for` statements of the following form:
+    - for init; condition; post, and any variant thereof with 2 semicolons and missing one or more of the 3 statements/expressions
+    - for condition
 - function declarations, returns
+- Implicit blocks are adhered to for `if` and `for` blocks: https://go.dev/ref/spec#Blocks 
 
 ### Todo
-
-- Other types of `for` statements 
+- Universe block (instead of manual `{` and `}` for each program string)
+- continue and break
 - `go` statements
 - Types
 - Fix the compilation of the 'log' tag - should not work even in the original vm
