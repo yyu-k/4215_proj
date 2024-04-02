@@ -436,12 +436,12 @@ export class Heap {
 
     // access environment given by address using a "position", i.e. a pair of
     // frame index and value index
-    get_Environment_value(env_address: number, position: [number, number]) {
+    get_Environment_value(env_address: number, position: readonly [number, number]) {
         const [frame_index, value_index] = position
         const frame_address = this.get_child(env_address, frame_index)
         return this.get_child(frame_address, value_index)
     }
-    set_Environment_value(env_address: number, position: [number, number], value: number) {
+    set_Environment_value(env_address: number, position: readonly [number, number], value: number) {
         const [frame_index, value_index] = position
         const frame_address = this.get_child(env_address, frame_index)
         this.set_child(frame_address, value_index, value)

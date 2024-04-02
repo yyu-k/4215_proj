@@ -75,7 +75,34 @@ const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
 // machine
 // *******
 
-const microcode: Record<string, (machine: Machine, heap: Heap, instr: any) => unknown> = {
+type Position = readonly [number, number]
+
+export type Instruction =
+{tag: 'LDC', val: unknown} |
+{tag: 'LD', sym: string, pos: Position} |
+{tag: 'UNOP', sym: string} |
+{tag: 'BINOP', sym: string} |
+{tag: 'JOF', addr: number} |
+{tag: 'GOTO', addr: number} |
+{tag: 'POP'} |
+{tag: 'CALL', arity: number} |
+{tag: 'TAIL_CALL', arity: number} |
+{tag: 'RESET'} |
+{tag: 'GO', arity: number} |
+{tag: 'ASSIGN', pos: Position} |
+{tag: 'LDF', arity: number, addr: number} |
+{tag: 'ENTER_SCOPE', num: number} |
+{tag: 'EXIT_SCOPE'} |
+{tag: 'ASSIGN', pos: Position} |
+{tag: 'DONE'}
+
+export type InstructionType<Tag extends Instruction["tag"]> = Extract<Instruction, { tag: Tag }>
+
+type MicrocodeFunctions<Instructions extends { tag: string }> = {
+    [E in Instructions as E["tag"]]: (machine: Machine, heap: Heap, instr: E) => unknown;
+}
+
+const microcode: MicrocodeFunctions<Instruction> = {
 LDC:
     (machine, heap, instr) =>
     push(machine.OS, JS_value_to_address(heap, instr.val)),
@@ -87,13 +114,13 @@ BINOP:
     push(machine.OS,
          apply_binop(heap, instr.sym, machine.OS.pop()!, machine.OS.pop()!)),
 POP:
-    (machine, heap, instr) =>
+    (machine, _heap, _instr) =>
     machine.OS.pop(),
 JOF:
     (machine, heap, instr) =>
     machine.PC = heap.is_True(machine.OS.pop()!) ? machine.PC : instr.addr,
 GOTO:
-    (machine, heap, instr) =>
+    (machine, _heap, instr) =>
     machine.PC = instr.addr,
 ENTER_SCOPE:
     (machine, heap, instr) => {
@@ -108,7 +135,7 @@ ENTER_SCOPE:
         }
     },
 EXIT_SCOPE:
-    (machine, heap, instr) =>
+    (machine, heap, _instr) =>
     machine.E = heap.get_Blockframe_environment(machine.RTS.pop()!),
 LD:
     (machine, heap, instr) => {
@@ -222,7 +249,7 @@ TAIL_CALL:
         machine.PC = new_PC
     },
 RESET:
-    (machine, heap, instr) => {
+    (machine, heap, _instr) => {
         // keep popping...
         const top_frame = machine.RTS.pop()!
         if (heap.is_Callframe(top_frame)) {
@@ -232,7 +259,8 @@ RESET:
         } else {
 	    machine.PC--
         }
-    }
+    },
+DONE: () => {}
 }
 
 export class Machine {
@@ -243,7 +271,6 @@ export class Machine {
     E: number      // heap Address
     RTS: number[]  // JS array (stack) of Addresses
     output: any[]
-    // TODO: Remove this global heap
     heap: Heap
 
     constructor(instrs: any[], heap: Heap) {

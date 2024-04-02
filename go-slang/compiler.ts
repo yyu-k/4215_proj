@@ -4,6 +4,7 @@
 
 import { push } from "./utilities"
 import { builtins, constants } from "./builtins"
+import { Instruction, InstructionType } from "./machine"
 
 // a compile-time environment is an array of
 // compile-time frames, and a compile-time frame
@@ -14,7 +15,7 @@ import { builtins, constants } from "./builtins"
 const compile_time_environment_position = (env: string[][], x: string) => {
     let frame_index = env.length
     while (value_index(env[--frame_index], x) === -1) {}
-    return [frame_index, value_index(env[frame_index], x)]
+    return [frame_index, value_index(env[frame_index], x)] as const
 }
 
 const value_index = (frame: string[], x: string) => {
@@ -64,7 +65,7 @@ const compile_sequence = (seq: any[], ce: any) => {
 // wc: write counter
 let wc: number
 // instrs: instruction array
-let instrs: any[]
+let instrs: Instruction[]
 
 const compile_comp = {
 Literal:
@@ -109,10 +110,10 @@ log:
 cond:
     (comp, ce) => {
         compile(comp.pred, ce)
-        const jump_on_false_instruction = {tag: 'JOF', addr: -1}
+        const jump_on_false_instruction: InstructionType<'JOF'> = {tag: 'JOF', addr: -1}
         instrs[wc++] = jump_on_false_instruction
         compile(comp.cons, ce)
-        const goto_instruction = {tag: 'GOTO', addr: -1}
+        const goto_instruction: InstructionType<'GOTO'> = {tag: 'GOTO', addr: -1}
         instrs[wc++] = goto_instruction;
         const alternative_address = wc;
         jump_on_false_instruction.addr = alternative_address;
@@ -123,7 +124,7 @@ while:
     (comp, ce) => {
         const loop_start = wc
         compile(comp.pred, ce)
-        const jump_on_false_instruction = {tag: 'JOF', addr: -1}
+        const jump_on_false_instruction: InstructionType<'JOF'> = {tag: 'JOF', addr: -1}
         instrs[wc++] = jump_on_false_instruction
         compile(comp.body, ce)
         instrs[wc++] = {tag: 'POP'}
@@ -161,7 +162,7 @@ lam:
                         arity: comp.arity,
                         addr: wc + 1};
         // jump over the body of the lambda expression
-        const goto_instruction = {tag: 'GOTO', addr: -1}
+        const goto_instruction: InstructionType<'GOTO'> = {tag: 'GOTO', addr: -1}
         instrs[wc++] = goto_instruction
         // extend compile-time environment
         compile(comp.body,
