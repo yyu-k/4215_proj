@@ -2,15 +2,13 @@ import { Heap } from './heap'
 import { Machine } from './machine'
 import { arity, error } from './utilities'
 
-// in this machine, the builtins take their
-// arguments directly from the operand stack,
-// to save the creation of an intermediate
-// argument array
+// the builtins take their arguments directly from the operand stack,
+// to save the creation of an intermediate argument array
 type BuiltinFunction = (machine: Machine, heap: Heap, ...args: unknown[]) => unknown
 const builtin_implementation: Record<string, BuiltinFunction> = {
     display       : (machine, heap) => {
                         const address = machine.OS.pop()!
-                        console.log(heap.address_to_JS_value(address))
+                        machine.output.push(heap.address_to_JS_value(address))
                         return address
                     },
     error         : (machine, heap) => error(heap.address_to_JS_value(machine.OS.pop()!)),

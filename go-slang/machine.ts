@@ -197,6 +197,7 @@ export class Machine {
     PC: number     // JS number
     E: number      // heap Address
     RTS: number[]  // JS array (stack) of Addresses
+    output: any[]
     // TODO: Remove this global heap
     heap: Heap
 
@@ -205,6 +206,9 @@ export class Machine {
         this.OS = []
         this.PC = 0
         this.RTS = []
+
+        this.output = []
+
         this.E = heap.allocate_Environment(0)
         this.E = heap.extend_Environment(heap.builtins_frame, this.E)
         this.E = heap.extend_Environment(heap.constants_frame, this.E)
@@ -228,6 +232,6 @@ export class Machine {
         }
         //console.log(OS, "\nfinal operands:           ")
         //print_OS()
-        return this.heap.address_to_JS_value(peek(this.OS, 0))
+        return [this.output, this.heap.address_to_JS_value(peek(this.OS, 0))]
     }
 }

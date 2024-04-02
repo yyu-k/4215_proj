@@ -6,7 +6,9 @@ const heap_size = 50000
 const compile_and_run = (program_str : string) => {
     const ast = parser.parse(program_str);
     const instructions = compile_program(ast) ;
-    return run(instructions, heap_size);
+    // TODO: check that output is correct
+    const [_output, final_value] = run(instructions, heap_size)
+    return final_value
 }
 
 describe('Multiplication/Division should have a higher precendence than addition/subtraction', () => {

@@ -32,4 +32,6 @@ go echo(i);
 const ast = parser.parse(program_str)
 const instructions = compile_program(ast)
 console.log(JSON.stringify(ast.body.stmts, null, 2))
-console.log(run(instructions, 50000))
+const [output, final_value] = run(instructions, 50000)
+console.log("Logged output:", output)
+console.log("Final value:", final_value)
