@@ -1,5 +1,6 @@
 import { parser } from './parser/parser';
-import { compile_program, run } from './vm';
+import { compile_program } from './compiler';
+import { run } from './global-machine';
 
 const program_str = `{
 const test = "abcd";

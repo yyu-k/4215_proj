@@ -1,6 +1,6 @@
 import { Heap } from './heap'
 import { error, peek, push, word_to_string } from './utilities'
-import { builtin_array } from './vm'
+import { builtin_array } from './builtins'
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
