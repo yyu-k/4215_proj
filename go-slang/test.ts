@@ -1,5 +1,6 @@
 import { parser } from './parser/parser';
-import { compile_program, run } from './vm';
+import { compile_program } from './compiler';
+import { run } from './global-machine';
 
 const program_str = `{
 const test = "abcd";
@@ -31,4 +32,6 @@ go echo(i);
 const ast = parser.parse(program_str)
 const instructions = compile_program(ast)
 console.log(JSON.stringify(ast.body.stmts, null, 2))
-console.log(run(instructions, 50000))
+const [output, final_value] = run(instructions, 50000)
+console.log("Logged output:", output)
+console.log("Final value:", final_value)
