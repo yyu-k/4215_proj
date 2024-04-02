@@ -16,7 +16,7 @@ Sequence
     = Block
     / __ a:Block __ b:Sequence  { return [a].concat(b).filter(x=>x!=null) }
     // TODO: is this correct?
-    / __ a:FunctionDeclaration __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
+    / __ a:FunctionStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:IfStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:LoopStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
     / __ a:Statement __ EOS __ b:Sequence { return [a].concat(b).filter(x=>x!=null) }
@@ -28,9 +28,13 @@ Statement
     / LoopStatement
     / ReturnStatement
     / NameDeclaration
-    / FunctionDeclaration
+    / FunctionStatement
     / GoStatement
     / Expression 
+
+FunctionStatement 
+  = FunctionDeclaration 
+  / MethodDeclaration
 
 FunctionDeclaration =
     FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
@@ -38,6 +42,16 @@ FunctionDeclaration =
             tag: "fun",
             sym: symbol,
             prms: params.map(x => x.sym),
+            body,
+        }
+    }
+
+MethodDeclaration = 
+    FunctionToken __ "(" __ receiver:Identifier __ ")" __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
+        return {
+            tag: "fun",
+            sym: symbol,
+            prms: [receiver].concat(params.map(x => x.sym)),
             body,
         }
     }
@@ -169,15 +183,27 @@ VariableAssignment "assignment"
   }
 
 CallExpression
-    = fn:PrimaryExpression __ args:Arguments {
+    = FunctionCall
+    / MethodCall
+    / PrimaryExpression
+
+FunctionCall
+  = fn:PrimaryExpression __ args:Arguments {
         return { tag: "app", fun: fn, args: args }
     }
-    / PrimaryExpression
+
+MethodCall
+  = obj:NameExpression DOT fn:PrimaryExpression __ args:Arguments {
+        return { tag: "app", fun: fn, args: [obj].concat(args) }
+    }
 
 PrimaryExpression
     = Literal
-    / ident:Identifier { return { tag: "nam", sym: ident } }
+    / NameExpression
     / "(" __ expr:Expression __ ")" { return expr }
+
+NameExpression
+  = ident:Identifier { return { tag: "nam", sym: ident } }
 
 Arguments
     = "(" __ exprs:ExpressionList __ ")" { return exprs }
@@ -342,6 +368,10 @@ Tokens "tokens"
 
 ReservedWord "reserved word"
   = Tokens
+
+//Special Symbols
+DOT
+  = "."
 
 //Quotes
 DQUO              "double quote"                

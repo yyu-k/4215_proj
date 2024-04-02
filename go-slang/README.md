@@ -26,6 +26,7 @@
 - Immediate nested blocks? {{}}
 - The definition of sequence is a bit odd in the grammar because Blocks and IfStatement have no EOS, but other statements do
 - Unary operators don't work, because the vm doesn't make sense (why is the expression called first? why must - be changed to -unary in the parse tree?). To be fixed. 
+- arity of function calls is unchecked - it is possible to pass 2 arguments to a function that accepts 1. 
 
 ## Implementation Notes
 
