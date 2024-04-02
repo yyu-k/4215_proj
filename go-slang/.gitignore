@@ -1,5 +1,6 @@
 node_modules
 *.js
+!jest.config.js
 !docs/jsdoc/templates/**/*.js
 !docs/lib/**/*.js
 *.map

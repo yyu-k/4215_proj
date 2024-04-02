@@ -1,3 +1,17 @@
+//Convenience Functions
+{
+  function buildBinaryExpression(head, tail) {
+    return tail.reduce(function(result, element) {
+      return {
+        tag: "binop",
+        sym: element[1],
+        first: result,
+        second: element[3]
+      };
+    }, head);
+  }
+}
+
 Sequence
     = Block
     / __ a:Block __ b:Sequence  { return [a].concat(b).filter(x=>x!=null) }
@@ -116,17 +130,24 @@ Expression
     / UnaryExpression
     / CallExpression
     / PrimaryExpression
-    
+
+MultiplicativeExpression
+  = head:UnaryExpression 
+    tail:(__ mul_op __ UnaryExpression)*
+    { return buildBinaryExpression(head, tail); }
+  / UnaryExpression
+
+AdditiveExpression
+  = head:MultiplicativeExpression
+    tail:(__ add_op __ MultiplicativeExpression)*
+    { return buildBinaryExpression(head, tail); }
+  / MultiplicativeExpression
+
 BinaryExpression
-    = e1:UnaryExpression __ symbol:BinaryOperator __ e2:BinaryExpression {
-        return {
-            tag: "binop",
-            sym: symbol,
-            first: e1,
-            second: e2
-        }
-    }
-    / UnaryExpression
+  = head:AdditiveExpression
+    tail:(__ rel_op __ AdditiveExpression)*
+    { return buildBinaryExpression(head, tail); }
+  / AdditiveExpression
 
 UnaryExpression
     = op:UnaryOperator __ e:UnaryExpression {
@@ -359,24 +380,7 @@ Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 EOS
   = __ ";"
 
-Assmt
-  = "=" !"="
-
-ShortAssmt      
-  = ":="
-
-UnaryOperator
-  = $("+" !"=")
-  / $("-" !"=")
-  / "!"
-
-rel_op          "comparison operator"           
-  = "=="           
-  / "!="
-  / "<="
-  / ">="
-  / "<"
-  / ">"
+//Binary Operators
 
 mul_op          "multiplication operator"       
   = "*"
@@ -387,7 +391,21 @@ add_op          "addition operator"
   = $("+" ![+=])
   / $("-" ![-=])
 
-BinaryOperator
-  = add_op
-  / mul_op
-  / rel_op
+rel_op          "comparison operator"           
+  = "=="           
+  / "!="
+  / "<="
+  / ">="
+  / "<"
+  / ">"
+
+Assmt
+  = "=" !"="
+
+ShortAssmt      
+  = ":="
+
+UnaryOperator
+  = $("+" !"=")
+  / $("-" !"=")
+  / "!"
