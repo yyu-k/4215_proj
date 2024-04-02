@@ -216,22 +216,24 @@ export class Machine {
         this.heap = heap
     }
 
-    run() {
-        this.heap.set_machine(this)
+    is_finished() {
+        return this.instrs[this.PC].tag === 'DONE'
+    }
 
-        while (this.instrs[this.PC].tag !== 'DONE') {
-            //heap.console.log()
-            //console.log(PC, "PC: ")
-            //console.log(instrs[PC].tag, "instr: ")
-            // print_OS("\noperands:            ");
-            //print_RTS("\nRTS:            ");
+    run(num_instructions: number) {
+        let instructions_ran = 0
+        while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
-            //console.log(instrs[PC].tag, "next instruction: ")
             microcode[instr.tag](this, this.heap, instr)
-            //heap.console.log()
+            instructions_ran++
         }
-        //console.log(OS, "\nfinal operands:           ")
-        //print_OS()
+    }
+
+    get_final_output() {
+        if (!this.is_finished()) {
+            throw new Error('Machine is not finished')
+        }
+
         return [this.output, this.heap.address_to_JS_value(peek(this.OS, 0))]
     }
 }

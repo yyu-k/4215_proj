@@ -7,5 +7,10 @@ export function run(instrs: any[], heap_size: number) {
     // TODO: allow for creation of new machines and time-slicing
     const machine = new Machine(instrs, heap)
 
-    return machine.run()
+    heap.add_machine(machine)
+    while (!machine.is_finished()) {
+        machine.run(100)
+    }
+
+    return machine.get_final_output()
 }
