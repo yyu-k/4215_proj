@@ -19,6 +19,7 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
                         return heap.allocate_Pair(hd, tl)
                     },
     is_pair       : (machine, heap, _) => heap.is_Pair(machine.OS.pop()!) ? heap.values.True : heap.values.False,
+    is_mutex       : (machine, heap, _) => heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,
     head          : (machine, heap, _) => heap.get_child(machine.OS.pop()!, 0),
     tail          : (machine, heap, _) => heap.get_child(machine.OS.pop()!, 1),
     is_null       : (machine, heap, _) => heap.is_Null(machine.OS.pop()!) ? heap.values.True : heap.values.False,

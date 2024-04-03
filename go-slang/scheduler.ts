@@ -2,7 +2,9 @@ import { builtins, constants } from "./builtins"
 import { Heap } from "./heap"
 import { Machine } from "./machine"
 
-export function run(instrs: any[], heap_size: number) {
+const DEFAULT_TIMESLICE = 100;
+
+export function run(instrs: any[], heap_size: number, timeslice : number = DEFAULT_TIMESLICE) {
     const heap = new Heap(heap_size, builtins, constants)
     const machines: Machine[] = []
     const machine = new Machine(instrs, heap)
@@ -17,7 +19,7 @@ export function run(instrs: any[], heap_size: number) {
         for (let i = 0; i < machines.length; i++) {
             const machine = machines[i]
             if (!machine.is_finished()) {
-                const result = machine.run(100)
+                const result = machine.run(timeslice)
                 if (typeof result === "object" && result.type === "machine") {
                     machines.push(result.machine)
                 }
