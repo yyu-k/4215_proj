@@ -3,11 +3,13 @@ import { error, peek, push, word_to_string } from './utilities'
 import { builtin_array, builtins, builtin_id_to_arity } from './builtins'
 import { MUTEX_CONSTANTS } from './mutex_builtins';
 
-const SIGNALS = {
-    DEFAULT_SIGNAL : 0,
-    FAILED_LOCK_SIGNAL : 1,
-    FAILED_WAIT_SIGNAL : 2
-}
+type MachineState =
+{ state: "default" } |
+{ state: "finished" } |
+{ state: "failed_lock" } |
+{ state: "failed_wait" } |
+{ state: "blocked_send" } |
+{ state: "blocked_receive" }
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
@@ -79,26 +81,27 @@ const apply_unop = (heap: Heap, op: string, v: number) =>
 const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
     // console.log(builtin_id, "apply_builtin: builtin_id:")
     let result = builtin_array[builtin_id](machine, heap)
-    //set_signal will set the result to heap.values.Undefined where the return passes in a JavaScript value rather than a heap value
-    result = set_signal(machine, heap, result, builtin_id);
+    // update_machine_state will set the result to heap.values.Undefined if the builtin executed
+    // was a special operation which has a return value of specific meaning
+    result = update_machine_state(machine, heap, result, builtin_id);
     machine.OS.pop() // pop fun
     push(machine.OS, result)
 }
 
-const set_signal = (machine : Machine, heap : Heap, result : unknown, builtin_id : number) => {
+const update_machine_state = (machine : Machine, heap : Heap, result : unknown, builtin_id : number) => {
     switch (builtin_id) {
         case builtins['Lock'].id:
             if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
-                machine.signal = SIGNALS.FAILED_LOCK_SIGNAL;
+                machine.state = { state: "failed_lock" }
             }
             return heap.values.Undefined
         case builtins['Wait'].id:
             if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
-                machine.signal = SIGNALS.FAILED_WAIT_SIGNAL;
+                machine.state = { state: "failed_wait" }
             }
             return heap.values.Undefined
         default:
-            machine.signal = SIGNALS.DEFAULT_SIGNAL;
+            machine.state = { state: "default" }
             return result;
     }
 }
@@ -134,11 +137,19 @@ export type Instruction =
 
 export type InstructionType<Tag extends Instruction["tag"]> = Extract<Instruction, { tag: Tag }>
 
+type MicrocodeFunctionResult =
+unknown |
+{type : "new_machine", value : Machine};
+
 type MicrocodeFunctions<Instructions extends { tag: string }> = {
-    [E in Instructions as E["tag"]]: (machine: Machine, heap: Heap, instr: E) => unknown;
+    [E in Instructions as E["tag"]]: (machine: Machine, heap: Heap, instr: E) => MicrocodeFunctionResult;
 }
 
-type SignalToScheduler = {type : string, value : unknown};
+type MachineRunResult = {
+    state: MachineState,
+    new_machine?: Machine | undefined,
+    instructions_ran: number,
+};
 
 const microcode: MicrocodeFunctions<Instruction> = {
 LDC:
@@ -312,7 +323,7 @@ GO:
             new_machine.RTS.pop(); //remove new_frame from RTS
             new_machine.PC = new_PC
         }
-        return {type : 'machine', value : new_machine}
+        return {type : 'new_machine', value : new_machine}
     },
 TAIL_CALL:
     (machine, heap, instr) => {
@@ -358,7 +369,7 @@ export class Machine {
     PC: number     // JS number
     E: number      // heap Address
     RTS: number[]  // JS array (stack) of Addresses
-    signal: number //used for concurrency 
+    state: MachineState //used for concurrency
     output: any[]
     heap: Heap
 
@@ -367,7 +378,7 @@ export class Machine {
         this.OS = []
         this.PC = 0
         this.RTS = []
-        this.signal = SIGNALS.DEFAULT_SIGNAL
+        this.state = { state: "default" }
         this.output = []
 
         this.E = heap.allocate_Environment(0)
@@ -379,18 +390,19 @@ export class Machine {
     }
 
     is_finished() {
-        return this.instrs[this.PC].tag === 'DONE'
+        return this.state.state === "finished"
     }
 
-    run(num_instructions: number): undefined | SignalToScheduler {
-
+    run(num_instructions: number): MachineRunResult {
         let instructions_ran = 0
 
         while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
-            const result = (microcode[instr.tag] as (machine: Machine, heap: Heap, instr: Instruction) => void | SignalToScheduler)(this, this.heap, instr)
-            if (this.signal === SIGNALS.FAILED_LOCK_SIGNAL) {
-                this.signal = SIGNALS.DEFAULT_SIGNAL;
+            const result = (microcode[instr.tag] as (machine: Machine, heap: Heap, instr: Instruction) => void | MicrocodeFunctionResult)(this, this.heap, instr)
+            instructions_ran++
+
+            if (this.state.state === "failed_lock") {
+                this.state = { state: "default" }
                 //Hack, to use a more sensible way of doing this. 
                 while (true) {
                     this.PC -= 1;
@@ -402,9 +414,9 @@ export class Machine {
                         throw Error("Failed to find LD Lock after Failed Lock Signal triggered")
                     }
                 }
-                return {type : "signal", value : SIGNALS.FAILED_LOCK_SIGNAL}
-            } else if (this.signal === SIGNALS.FAILED_WAIT_SIGNAL) {
-                this.signal = SIGNALS.DEFAULT_SIGNAL;
+                return { state: this.state, instructions_ran }
+            } else if (this.state.state === "failed_wait") {
+                this.state = { state: "default" }
                 while (true) {
                     this.PC -= 1;
                     const instr = this.instrs[this.PC]
@@ -416,12 +428,18 @@ export class Machine {
                     }
                 }
                 //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
-                return {type : "signal", value : SIGNALS.FAILED_WAIT_SIGNAL}
-            } else if (typeof result === 'object' && result != null && "type" in result) {
-                return result as SignalToScheduler
+                return { state: this.state, instructions_ran }
             }
-            instructions_ran++
+            // TODO: spawning go machines doesn't need to trigger breaking out of loop
+            else if (typeof result === 'object' && result != null && "type" in result && "value" in result && result.type === "new_machine" && result.value instanceof Machine) {
+                return { state: this.state, new_machine: result.value, instructions_ran }
+            }
         }
+
+        if (this.instrs[this.PC].tag === 'DONE') {
+            this.state = { state: "finished" }
+        }
+        return { state: this.state, instructions_ran }
     }
 
     get_final_output() {

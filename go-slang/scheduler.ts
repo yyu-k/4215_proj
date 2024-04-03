@@ -21,13 +21,11 @@ export function run(instrs: Instruction[], heap_size: number, timeslice : number
                 // keep running same machine even if it creates new machine
                 while (true) {
                     const result = machine.run(timeslice)
-                    if (result !== undefined) {
-                        if (result.type === "machine" && result.value instanceof Machine) {
-                            machines.push(result.value)
-                        } else if (result.type === "signal") {
-                            //just switch to another machine
-                            continue outer
-                        }
+                    if (result.new_machine instanceof Machine) {
+                        machines.push(result.new_machine)
+                    } else if (result.state.state === "failed_lock" || result.state.state === "failed_wait") {
+                        //just switch to another machine
+                        continue outer
                     } else {
                         break
                     }
