@@ -1,6 +1,10 @@
 import { Heap } from './heap'
 import { error, peek, push, word_to_string } from './utilities'
-import { builtin_array } from './builtins'
+import { builtin_array, builtins } from './builtins'
+import { MachineSignal } from './MachineSignal';
+
+const DEFAULT_SIGNAL = 0;
+const FAILED_LOCK_SIGNAL = 1;
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
@@ -67,8 +71,21 @@ const apply_unop = (heap: Heap, op: string, v: number) =>
 const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
     // console.log(builtin_id, "apply_builtin: builtin_id:")
     const result = builtin_array[builtin_id](machine, heap)
+    set_signal(machine, result, builtin_id);
     machine.OS.pop() // pop fun
     push(machine.OS, result)
+}
+
+const set_signal = (machine : Machine, result : unknown, builtin_id : number) => {
+    switch (builtin_id) {
+        case builtins['Lock'].id:
+            if (result === false) {
+                machine.signal = FAILED_LOCK_SIGNAL;
+            }
+            break;
+        default:
+            machine.signal = DEFAULT_SIGNAL;
+    }
 }
 
 // *******
@@ -196,7 +213,7 @@ GO:
             new_machine.RTS.pop(); //remove new_frame from RTS
             new_machine.PC = new_PC
         }
-
+        return new MachineSignal('machine', new_machine)
         return { type: 'machine', machine: new_machine }
     },
 TAIL_CALL:
@@ -242,6 +259,7 @@ export class Machine {
     PC: number     // JS number
     E: number      // heap Address
     RTS: number[]  // JS array (stack) of Addresses
+    signal: number //used for concurrency 
     output: any[]
     // TODO: Remove this global heap
     heap: Heap
@@ -251,7 +269,7 @@ export class Machine {
         this.OS = []
         this.PC = 0
         this.RTS = []
-
+        this.signal = DEFAULT_SIGNAL
         this.output = []
 
         this.E = heap.allocate_Environment(0)
@@ -266,13 +284,23 @@ export class Machine {
         return this.instrs[this.PC].tag === 'DONE'
     }
 
-    run(num_instructions: number): undefined | { type: 'machine', machine: Machine } {
+    run(num_instructions: number): undefined | MachineSignal {
+
         let instructions_ran = 0
+
         while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
             const result = microcode[instr.tag](this, this.heap, instr)
+            if (this.signal === FAILED_LOCK_SIGNAL) {
+                this.signal = DEFAULT_SIGNAL;
+                //Hack, to use a more sensible way of doing this. 
+                do {
+                    this.PC -= 1;
+                } while (this.instrs[this.PC].sym !== "Lock")
+                return new MachineSignal("signal", FAILED_LOCK_SIGNAL)
+            }
             if (typeof result === 'object' && result != null && "type" in result) {
-                return result as { type: 'machine', machine: Machine }
+                return result as MachineSignal
             }
             instructions_ran++
         }

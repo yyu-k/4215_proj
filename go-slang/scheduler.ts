@@ -20,9 +20,14 @@ export function run(instrs: any[], heap_size: number, timeslice : number = DEFAU
             const machine = machines[i]
             if (!machine.is_finished()) {
                 const result = machine.run(timeslice)
-                if (typeof result === "object" && result.type === "machine") {
-                    machines.push(result.machine)
-                }
+                if (result !== undefined) {
+                    if (result.type === "machine") {
+                        machines.push(result.value)
+                    } else if (result.type === "signal") {
+                        //just switch to another machine
+                        continue
+                    }
+                } 
                 all_finished = false
             }
         }

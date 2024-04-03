@@ -521,6 +521,20 @@ export class Heap {
         return mutex_address
     }
 
+    set_Mutex_value(address : number, value : number) {
+        if (!this.is_Mutex(address)) {
+            throw TypeError("Attempt to set Mutex value of an address which is not a Mutex");
+        }
+        return this.set_child(address, 0, value);
+    }
+
+    get_Mutex_value(address : number) {
+        if (!this.is_Mutex(address)) {
+            throw TypeError("Attempt to get Mutex value of an address which is not a Mutex");
+        }
+        return this.get_child(address, 0);
+    }
+
     is_Mutex(address : number) {
         return this.get_tag(address) === Mutex_tag
     }
