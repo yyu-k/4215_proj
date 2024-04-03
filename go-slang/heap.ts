@@ -15,7 +15,7 @@ export class Mutex {
 
 const WORD_SIZE = 8
 
-const NODE_SIZE = 10
+const NODE_SIZE = 20
 
 const MARK_OFFSET = 7; //last byte in the tag
 const MARKED = 1;
