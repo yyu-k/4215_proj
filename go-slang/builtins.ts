@@ -33,6 +33,9 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
                         const val = machine.OS.pop()!
                         const p = machine.OS.pop()!
                         heap.set_child(p, 1, val)
+                    },
+    Channel      : (_machine, heap) => {
+                        return heap.allocate_Channel()
                     }
 }
 

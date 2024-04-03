@@ -121,6 +121,7 @@ Block
         return { tag: "blk", body: seq }
     }
 
+// TODO: EOS handling doesn't work well if next line is EOF
 Statement
     = Block
     / IfStatement
@@ -128,6 +129,7 @@ Statement
     / LoopControlStatement
     / FunctionStatement
     / stmt:ReturnStatement EOS { return stmt }
+    / stmt:ChannelSendStatement EOS { return stmt }
     / stmt:NameDeclaration EOS { return stmt }
     / stmt:GoStatement EOS { return stmt }
     / stmt:Expression  EOS { return stmt }
@@ -270,10 +272,28 @@ GoStatement "go statement"
         }
     }
 
+ChannelSendStatement "channel send statement"
+    = chan:UnaryExpression __ "<-" __ value:Expression {
+        return {
+            tag: "send",
+            chan,
+            value,
+        }
+    }
+
+ChannelReadExpression "channel read expression"
+    = "<-" __ chan:Expression {
+        return {
+            tag: "receive",
+            chan,
+        }
+    }
+
 Expression
     = VariableAssignment
     / BinaryExpression
     / UnaryExpression
+    / ChannelReadExpression
     / CallExpression
     / PrimaryExpression
 

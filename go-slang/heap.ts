@@ -42,6 +42,7 @@ const Builtin_tag        = 12
 const Mutex_tag          = 13
 const String_tag         = 14
 const Whileframe_tag     = 15
+const Channel_tag        = 16
 
 type Builtins = Record<string, { id: number }>
 type Constants = Record<string, unknown>
@@ -323,7 +324,7 @@ export class Heap {
     get_4_bytes_at_offset(address : number, offset : number) {
         return this.data.getUint32(address * WORD_SIZE + offset);
     }
-	
+
     // all values (including literals) are allocated on the heap.
 
     // We allocate canonical values for
@@ -370,7 +371,7 @@ export class Heap {
     is_String(address : number) {
         return this.get_tag(address) === String_tag;
     }
-    
+
     // strings:
     // [1 byte tag, 4 byte hash to stringPool,
     // 2 bytes #children, 1 byte unused]
@@ -405,11 +406,11 @@ export class Heap {
     get_string_hash(address : number) {
         return this.get_4_bytes_at_offset(address, 1);
     }
-        
+
     get_string(address : number) {
         return this.stringPool[this.get_string_hash(address)][1];
     }
-        
+
 
     // closure
     // [1 byte tag, 1 byte arity, 2 bytes pc, 1 byte unused, 2 bytes #children, 1 byte unused]
@@ -612,6 +613,16 @@ export class Heap {
 
     is_Mutex(address : number) {
         return this.get_tag(address) === Mutex_tag
+    }
+
+    // channel (unbuffered only for now)
+    // [1 byte tag, 2 bytes unused]
+    allocate_Channel() {
+        const waitgroup_address = this.allocate(Channel_tag, 1)
+        return waitgroup_address
+    }
+    is_Channel(address: number) {
+        return this.get_tag(address) === Channel_tag
     }
 
     // conversions between addresses and JS_value

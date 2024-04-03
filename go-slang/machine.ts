@@ -8,8 +8,8 @@ type MachineState =
 { state: "finished" } |
 { state: "failed_lock" } |
 { state: "failed_wait" } |
-{ state: "blocked_send" } |
-{ state: "blocked_receive" }
+{ state: "blocked_send", chan_address: number, value: number } |
+{ state: "blocked_receive", chan_address: number }
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
@@ -127,6 +127,8 @@ export type Instruction =
 {tag: 'CALL', arity: number} |
 {tag: 'TAIL_CALL', arity: number} |
 {tag: 'RESET'} |
+{tag: 'SEND'} |
+{tag: 'RECEIVE'} |
 {tag: 'GO', arity: number} |
 {tag: 'ASSIGN', pos: Position} |
 {tag: 'LDF', arity: number, addr: number} |
@@ -359,6 +361,18 @@ RESET:
 	    machine.PC--
         }
     },
+// TODO: handle buffered channels
+SEND:
+    (machine, heap, instr) => {
+        const value = machine.OS.pop()!
+        const chan_address = machine.OS.pop()!
+        machine.state = { state: "blocked_send", chan_address, value }
+    },
+RECEIVE:
+    (machine, heap, instr) => {
+        const chan_address = machine.OS.pop()!
+        machine.state = { state: "blocked_receive", chan_address }
+    },
 DONE: () => {}
 }
 
@@ -393,15 +407,29 @@ export class Machine {
         return this.state.state === "finished"
     }
 
+    is_blocked() {
+        return this.state.state === "blocked_send" || this.state.state === "blocked_receive"
+    }
+
     run(num_instructions: number): MachineRunResult {
         let instructions_ran = 0
+
+        // Machines cannot progress on blocked send/receive for unbuffered channels.
+        // This is handled in the scheduler.
+        if (this.is_finished() || this.is_blocked()) {
+            return { state: this.state, instructions_ran }
+        }
 
         while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
             const result = (microcode[instr.tag] as (machine: Machine, heap: Heap, instr: Instruction) => void | MicrocodeFunctionResult)(this, this.heap, instr)
             instructions_ran++
 
-            if (this.state.state === "failed_lock") {
+            // Workaround since TS narrows `this.state` to exclude `blocked_send/receive` after
+            // the check above, but they could be modified by the microcode functions.
+            const current_state: MachineState = this.state as MachineState
+
+            if (current_state.state === "failed_lock") {
                 this.state = { state: "default" }
                 //Hack, to use a more sensible way of doing this. 
                 while (true) {
@@ -415,7 +443,7 @@ export class Machine {
                     }
                 }
                 return { state: this.state, instructions_ran }
-            } else if (this.state.state === "failed_wait") {
+            } else if (current_state.state === "failed_wait") {
                 this.state = { state: "default" }
                 while (true) {
                     this.PC -= 1;
@@ -428,6 +456,8 @@ export class Machine {
                     }
                 }
                 //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
+                return { state: this.state, instructions_ran }
+            } else if (current_state.state === "blocked_send" || current_state.state === "blocked_receive") {
                 return { state: this.state, instructions_ran }
             }
             // TODO: spawning go machines doesn't need to trigger breaking out of loop

@@ -162,6 +162,17 @@ app:
         }
         instrs[wc++] = {tag: 'CALL', arity: comp.args.length}
     },
+send:
+    (comp, ce) => {
+        compile(comp.chan, ce)
+        compile(comp.value, ce)
+        instrs[wc++] = {tag: 'SEND'}
+    },
+receive:
+    (comp, ce) => {
+        compile(comp.chan, ce)
+        instrs[wc++] = {tag: 'RECEIVE'}
+    },
 go:
     (comp, ce) => {
         compile(comp.fun, ce)
