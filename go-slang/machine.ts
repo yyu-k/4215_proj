@@ -297,7 +297,7 @@ export class Machine {
         let instructions_ran = 0
         while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
-            const result = microcode[instr.tag](this, this.heap, instr)
+            const result = (microcode[instr.tag] as (machine: Machine, heap: Heap, instr: Instruction) => void | { type: "machine", machine: Machine })(this, this.heap, instr)
             if (typeof result === 'object' && result != null && "type" in result) {
                 return result as { type: 'machine', machine: Machine }
             }
