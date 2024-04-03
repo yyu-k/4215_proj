@@ -425,10 +425,7 @@ export class Machine {
     }
 
     get_final_output() {
-        if (!this.is_finished()) {
-            throw new Error('Machine is not finished')
-        }
-
+        // TODO: expose `is_finished`?
         return [this.output, this.heap.address_to_JS_value(peek(this.OS, 0))]
     }
 }

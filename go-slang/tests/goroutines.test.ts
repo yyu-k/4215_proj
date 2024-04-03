@@ -21,7 +21,7 @@ describe('goroutines', () => {
     })
 
     // TODO: should we be able to call functions before they are defined?
-    test('self-defined functions', () => {
+    test('main machine should end before other machines without synchronization', () => {
         const result = compile_and_run(`{
             func add(a, b) {
                 return a + b;
@@ -31,6 +31,6 @@ describe('goroutines', () => {
         }`)
         expect(result).toHaveLength(2)
         expect(result[0]).toStrictEqual([[], 25])
-        expect(result[1]).toStrictEqual([[], 3])
+        expect(result[1]).toStrictEqual([[], false])
     })
 });
