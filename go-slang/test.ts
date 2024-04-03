@@ -2,17 +2,16 @@ import { parser } from './parser/parser';
 import { compile_program } from './compiler';
 import { run } from './scheduler';
 
-const program_str = `{
+const program_str = `
 func add(a, b) {
-    return a + b;
+    return a + b
 }
-go add(1, 2);
-add(10, 15);
-}`;
+i := 1;;;;; add(10, 15)
+`;
 
 const ast = parser.parse(program_str)
-const instructions = compile_program(ast)
 console.log(JSON.stringify(ast.body.stmts, null, 2))
+const instructions = compile_program(ast)
 console.log(JSON.stringify(instructions, null, 2))
 const machines = run(instructions, 50000)
 

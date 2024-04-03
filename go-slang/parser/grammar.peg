@@ -72,25 +72,40 @@
   }
 }
 
-Sequence
-    = Block
-    / __ a:Block __ b:Sequence  { return [a].concat(b).filter(x=>x!=null) }
-    // TODO: is this correct?
-    / __ a:FunctionStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
-    / __ a:IfStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
-    / __ a:LoopStatement __ b:Sequence {return [a].concat(b).filter(x=>x!=null)}
-    / __ a:Statement __ EOS __ b:Sequence { return [a].concat(b).filter(x=>x!=null) }
-    / a:Statement? { return a }
+Program "global program"
+    = __ blk:Block __ { return blk }
+    / seq:Sequence {
+        // Wrap sequence without block into block
+        return { tag: "blk", body: seq }
+    }
 
-Statement 
+Sequence "list of statements"
+    = __ head:Statement tail:(__ Statement)* __ {
+        return {
+          tag: "seq",
+          stmts: [head].concat(tail.flatMap(values => values.filter(value => value !== null)))
+        }
+    }
+    / __ head:Statement? __ {
+        return { tag: "seq", stmts: head ? [head] : [] }
+    }
+
+Block
+    = "{" seq:Sequence? "}" {
+        return { tag: "blk", body: seq }
+    }
+
+Statement
     = Block
     / IfStatement
     / LoopStatement
-    / ReturnStatement
-    / NameDeclaration
     / FunctionStatement
-    / GoStatement
-    / Expression 
+    / stmt:ReturnStatement EOS { return stmt }
+    / stmt:NameDeclaration EOS { return stmt }
+    / stmt:GoStatement EOS { return stmt }
+    / stmt:Expression  EOS { return stmt }
+    // Allow empty statements
+    / ";" __ { return null }
 
 FunctionStatement 
   = FunctionDeclaration 
@@ -118,11 +133,6 @@ MethodDeclaration =
 
 ReturnStatement =
     ReturnToken __ exp:Expression { return {tag : "ret", expr : exp} }
-
-Block
-    = "{" __ body:(Sequence)? "}" {
-        return new BlockComp(body);
-    }
 
 LoopStatement "loops"
   = WhileStatement
@@ -491,7 +501,7 @@ LineTerminatorSequence "end of line"
   / "\u2029" 
 
 __
-  = (WhiteSpace / LineTerminatorSequence)*
+  = (WhiteSpace / LineTerminatorSequence)* { return null }
 
 
 WhiteSpace "whitespace"
@@ -506,8 +516,10 @@ WhiteSpace "whitespace"
 // Separator, Space
 Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 
-EOS
-  = __ ";"
+EOS "end of statement"
+// Either an explicit semicolon, or a line terminator character
+  = WhiteSpace* ";" WhiteSpace*
+  / WhiteSpace* (LineTerminatorSequence WhiteSpace*)+
 
 //Binary Operators
 
