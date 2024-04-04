@@ -1,6 +1,6 @@
 import { Heap } from './heap'
 import { error, peek, push, word_to_string } from './utilities'
-import { builtin_array, builtins } from './builtins'
+import { builtin_array, builtins, builtin_id_to_arity } from './builtins'
 import { MUTEX_CONSTANTS } from './mutex_builtins';
 
 const SIGNALS = {
@@ -185,12 +185,22 @@ LDF:
     },
 CALL:
     (machine, heap, instr) => {
+        const arity_check = (arity_1 : number, arity_2:number) => {
+            if (arity_1 !== arity_2) {
+                throw Error("Mismatch in arity between number of called arguments and number of arguments in Closure");
+            }
+        }
+
         const arity = instr.arity
         const fun = peek(machine.OS, arity)
         if (heap.is_Builtin(fun)) {
+            const builtin_arity = builtin_id_to_arity[heap.get_Builtin_id(fun)]
+            arity_check(builtin_arity, arity);
             return apply_builtin(machine, heap, heap.get_Builtin_id(fun))
         }
         const new_PC = heap.get_Closure_pc(fun)
+        const closure_arity = heap.get_Closure_arity(fun);
+        arity_check(closure_arity, arity);
         const new_frame = heap.allocate_Frame(arity)
         for (let i = arity - 1; i >= 0; i--) {
             heap.set_child(new_frame, i, machine.OS.pop()!)

@@ -215,6 +215,7 @@ fun:
              sym:  comp.sym,
              expr: {tag: 'lam',
                     prms: comp.prms,
+                    arity : comp.prms.length,
                     body: comp.body}},
 	        ce)
     }

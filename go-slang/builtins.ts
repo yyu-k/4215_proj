@@ -38,17 +38,20 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
 
 export const builtins : Record<string, {tag : string, id: number, arity : number}> = {}
 export const builtin_array: BuiltinFunction[] = []
+export const builtin_id_to_arity : Record<number, number> = {}
 const all_builtins = {...waitGroup_builtins , ...mutex_builtins, ...builtin_implementation}
 {
     let i = 0
     for (const key in all_builtins) {
+        const builtin_arity = arity(all_builtins[key]) - 2;
         builtins[key] =
             {
                 tag:   'BUILTIN',
                 id:    i,
                 // actual function length minus 2 since the first two arguments are the machine and the heap
-                arity: arity(all_builtins[key]) - 2
+                arity: builtin_arity
             }
+        builtin_id_to_arity[i] = builtin_arity;
         builtin_array[i++] = all_builtins[key]
     }
 }

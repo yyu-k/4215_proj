@@ -11,7 +11,7 @@ export const MUTEX_CONSTANTS = {
 type BuiltinFunction = (machine: Machine, heap: Heap, ...args: unknown[]) => unknown
 
 export const mutex_builtins: Record<string, BuiltinFunction> = {
-    Mutex           : (machine, heap, _) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
+    Mutex           : (machine, heap) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
     Lock            : (machine, heap, _mutex_address) => {
                         const mutex_address = machine.OS.pop()!;
                         const current_mutex_value = heap.get_Mutex_value(mutex_address);
@@ -30,7 +30,7 @@ export const mutex_builtins: Record<string, BuiltinFunction> = {
 }
 
 export const waitGroup_builtins: Record<string, BuiltinFunction> = {
-    WaitGroup       : (machine, heap, _) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
+    WaitGroup       : (machine, heap) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
     Add             : (machine, heap, _mutex_address) => {
                         const mutex_address = machine.OS.pop()!;
                         const current_mutex_value = heap.get_Mutex_value(mutex_address);
