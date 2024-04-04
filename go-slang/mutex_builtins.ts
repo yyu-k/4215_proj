@@ -1,34 +1,36 @@
 import { Heap } from './heap'
 import { Machine } from './machine'
 
-const MUTEX_LOCKED = 1;
-const MUTEX_UNLOCKED = 0;
-const SUCCESS = true;
-const FAILURE = false;
+export const MUTEX_CONSTANTS = {
+    MUTEX_LOCKED : 1,
+    MUTEX_UNLOCKED : 0,
+    MUTEX_SUCCESS : true,
+    MUTEX_FAILURE : false,
+}
 
 type BuiltinFunction = (machine: Machine, heap: Heap, ...args: unknown[]) => unknown
 
 export const mutex_builtins: Record<string, BuiltinFunction> = {
-    Mutex           : (machine, heap, _) => heap.allocate_Mutex(MUTEX_UNLOCKED),
+    Mutex           : (machine, heap, _) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
     Lock            : (machine, heap, _mutex_address) => {
                         const mutex_address = machine.OS.pop()!;
                         const current_mutex_value = heap.get_Mutex_value(mutex_address);
-                        if (current_mutex_value === MUTEX_UNLOCKED) {
-                            heap.set_Mutex_value(mutex_address, MUTEX_LOCKED)
-                            return SUCCESS
+                        if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
+                            heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED)
+                            return MUTEX_CONSTANTS.MUTEX_SUCCESS
                         } else {
-                            return FAILURE
+                            return MUTEX_CONSTANTS.MUTEX_FAILURE
                         }
                     },
     Unlock          : (machine, heap, _mutex_address) => {
                         const mutex_address = machine.OS.pop()!;
-                        heap.set_Mutex_value(mutex_address, MUTEX_UNLOCKED)
+                        heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED)
                     },
     is_mutex        : (machine, heap, _) => heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,
 }
 
 export const waitGroup_builtins: Record<string, BuiltinFunction> = {
-    WaitGroup       : (machine, heap, _) => heap.allocate_Mutex(MUTEX_UNLOCKED),
+    WaitGroup       : (machine, heap, _) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
     Add             : (machine, heap, _mutex_address) => {
                         const mutex_address = machine.OS.pop()!;
                         const current_mutex_value = heap.get_Mutex_value(mutex_address);
@@ -42,10 +44,10 @@ export const waitGroup_builtins: Record<string, BuiltinFunction> = {
     Wait            : (machine, heap, _mutex_address) => {
                         const mutex_address = machine.OS.pop()!;
                         const current_mutex_value = heap.get_Mutex_value(mutex_address);
-                        if (current_mutex_value === MUTEX_UNLOCKED) {
-                            return SUCCESS;
+                        if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
+                            return MUTEX_CONSTANTS.MUTEX_SUCCESS;
                         } else {
-                            return FAILURE;
+                            return MUTEX_CONSTANTS.MUTEX_FAILURE;
                         }
                     },
     is_waitGroup    : (machine, heap, _) => heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,

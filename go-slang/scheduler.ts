@@ -21,7 +21,7 @@ export function run(instrs: Instruction[], heap_size: number, timeslice : number
             if (!machine.is_finished()) {
                 const result = machine.run(timeslice)
                 if (result !== undefined) {
-                    if (result.type === "machine") {
+                    if (result.type === "machine" && result.value instanceof Machine) {
                         machines.push(result.value)
                     } else if (result.type === "signal") {
                         //just switch to another machine

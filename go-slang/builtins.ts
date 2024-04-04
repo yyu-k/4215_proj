@@ -36,7 +36,7 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
                     }
 }
 
-export const builtins = {}
+export const builtins : Record<string, {tag : string, id: number, arity : number}> = {}
 export const builtin_array: BuiltinFunction[] = []
 const all_builtins = {...waitGroup_builtins , ...mutex_builtins, ...builtin_implementation}
 {

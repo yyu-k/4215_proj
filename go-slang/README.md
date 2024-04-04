@@ -39,3 +39,4 @@
 - Precedence follows the specifications, but bitwise operators are not implemented: https://go.dev/ref/spec#Operators
 - Mutexes are not associated with any particular routine - they can unlock each other's mutex. https://pkg.go.dev/sync#Mutex.Unlock 
 - +=, -=, ++, -- are not implemented
+- WaitGroups and Mutexes are indistinguishable from each other, so illegal operations can be performed using methods meant for the other. 

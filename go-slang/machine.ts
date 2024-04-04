@@ -1,11 +1,13 @@
 import { Heap } from './heap'
 import { error, peek, push, word_to_string } from './utilities'
 import { builtin_array, builtins } from './builtins'
-import { MachineSignal } from './MachineSignal';
+import { MUTEX_CONSTANTS } from './mutex_builtins';
 
-const DEFAULT_SIGNAL = 0;
-const FAILED_LOCK_SIGNAL = 1;
-const FAILED_WAIT_SIGNAL = 2;
+const SIGNALS = {
+    DEFAULT_SIGNAL : 0,
+    FAILED_LOCK_SIGNAL : 1,
+    FAILED_WAIT_SIGNAL : 2
+}
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
@@ -71,26 +73,28 @@ const apply_unop = (heap: Heap, op: string, v: number) =>
 
 const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
     // console.log(builtin_id, "apply_builtin: builtin_id:")
-    const result = builtin_array[builtin_id](machine, heap)
-    set_signal(machine, result, builtin_id);
+    let result = builtin_array[builtin_id](machine, heap)
+    //set_signal will set the result to heap.values.Null where the return passes in a JavaScript value rather than a heap value
+    result = set_signal(machine, heap, result, builtin_id);
     machine.OS.pop() // pop fun
     push(machine.OS, result)
 }
 
-const set_signal = (machine : Machine, result : unknown, builtin_id : number) => {
+const set_signal = (machine : Machine, heap : Heap, result : unknown, builtin_id : number) => {
     switch (builtin_id) {
         case builtins['Lock'].id:
-            if (result === false) {
-                machine.signal = FAILED_LOCK_SIGNAL;
+            if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
+                machine.signal = SIGNALS.FAILED_LOCK_SIGNAL;
             }
-            break;
+            return heap.values.Null 
         case builtins['Wait'].id:
-            if (result === false) {
-                machine.signal = FAILED_WAIT_SIGNAL;
+            if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
+                machine.signal = SIGNALS.FAILED_WAIT_SIGNAL;
             }
-            break;
+            return heap.values.Null 
         default:
-            machine.signal = DEFAULT_SIGNAL;
+            machine.signal = SIGNALS.DEFAULT_SIGNAL;
+            return result;
     }
 }
 
@@ -124,6 +128,8 @@ export type InstructionType<Tag extends Instruction["tag"]> = Extract<Instructio
 type MicrocodeFunctions<Instructions extends { tag: string }> = {
     [E in Instructions as E["tag"]]: (machine: Machine, heap: Heap, instr: E) => unknown;
 }
+
+type SignalToScheduler = {type : string, value : unknown};
 
 const microcode: MicrocodeFunctions<Instruction> = {
 LDC:
@@ -246,8 +252,7 @@ GO:
             new_machine.RTS.pop(); //remove new_frame from RTS
             new_machine.PC = new_PC
         }
-        return new MachineSignal('machine', new_machine)
-        return { type: 'machine', machine: new_machine }
+        return {type : 'machine', value : new_machine}
     },
 TAIL_CALL:
     (machine, heap, instr) => {
@@ -302,7 +307,7 @@ export class Machine {
         this.OS = []
         this.PC = 0
         this.RTS = []
-        this.signal = DEFAULT_SIGNAL
+        this.signal = SIGNALS.DEFAULT_SIGNAL
         this.output = []
 
         this.E = heap.allocate_Environment(0)
@@ -317,29 +322,43 @@ export class Machine {
         return this.instrs[this.PC].tag === 'DONE'
     }
 
-    run(num_instructions: number): undefined | MachineSignal {
+    run(num_instructions: number): undefined | SignalToScheduler {
 
         let instructions_ran = 0
 
         while (instructions_ran < num_instructions && this.instrs[this.PC].tag !== 'DONE') {
             const instr = this.instrs[this.PC++]
-            const result = (microcode[instr.tag] as (machine: Machine, heap: Heap, instr: Instruction) => void | { type: "machine", machine: Machine })(this, this.heap, instr)
-            if (this.signal === FAILED_LOCK_SIGNAL) {
-                this.signal = DEFAULT_SIGNAL;
+            const result = (microcode[instr.tag] as (machine: Machine, heap: Heap, instr: Instruction) => void | SignalToScheduler)(this, this.heap, instr)
+            if (this.signal === SIGNALS.FAILED_LOCK_SIGNAL) {
+                this.signal = SIGNALS.DEFAULT_SIGNAL;
                 //Hack, to use a more sensible way of doing this. 
-                do {
+                while (true) {
                     this.PC -= 1;
-                } while (this.instrs[this.PC].sym !== "Lock")
-                return new MachineSignal("signal", FAILED_LOCK_SIGNAL)
-            } else if (this.signal === FAILED_WAIT_SIGNAL) {
-                this.signal = DEFAULT_SIGNAL;
-                do {
+                    const instr = this.instrs[this.PC]
+                    if (instr.tag === "LD" && instr.sym === "Lock") {
+                        break
+                    }
+                    if (this.PC == 0) {
+                        throw Error("Failed to find LD Lock after Failed Lock Signal triggered")
+                    }
+                }
+                return {type : "signal", value : SIGNALS.FAILED_LOCK_SIGNAL}
+            } else if (this.signal === SIGNALS.FAILED_WAIT_SIGNAL) {
+                this.signal = SIGNALS.DEFAULT_SIGNAL;
+                while (true) {
                     this.PC -= 1;
-                } while (this.instrs[this.PC].sym !== "Wait")
+                    const instr = this.instrs[this.PC]
+                    if (instr.tag === "LD" && instr.sym === "Wait") {
+                        break
+                    }
+                    if (this.PC == 0) {
+                        throw Error("Failed to find LD Wait after Failed Wait Signal triggered")
+                    }
+                }
                 //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
-                return new MachineSignal("signal", FAILED_WAIT_SIGNAL)
+                return {type : "signal", value : SIGNALS.FAILED_WAIT_SIGNAL}
             } else if (typeof result === 'object' && result != null && "type" in result) {
-                return result as MachineSignal
+                return result as SignalToScheduler
             }
             instructions_ran++
         }
