@@ -5,14 +5,6 @@
 import { Machine } from "./machine";
 import { error, word_to_string } from "./utilities";
 
-export class Mutex {
-    identity : string = "mutex"
-    count : number
-    constructor(n : number) {
-        this.count = n;
-    }
-}
-
 const WORD_SIZE = 8
 
 const NODE_SIZE = 20
@@ -48,6 +40,7 @@ const Environment_tag    = 10 // 0000 1010
 const Pair_tag           = 11
 const Builtin_tag        = 12
 const Mutex_tag          = 13
+const String_tag         = 14
 
 type Builtins = Record<string, { id: number }>
 type Constants = Record<string, unknown>
@@ -74,6 +67,9 @@ export class Heap {
 
     // list of attached machines
     machines: Set<Machine>
+
+    // strings stuff
+    stringPool : Record<number, [number, string]> = {}
 
     // allocates a heap of given size (in bytes) and returns a DataView of that
     constructor(words: number, builtins: Builtins, constants: Constants) {
@@ -318,6 +314,15 @@ export class Heap {
         return this.data.getUint16(address * WORD_SIZE + offset)
     }
 
+    // set_4_bytes used by string pool
+    set_4_bytes_at_offset(address : number, offset : number, value : number) {
+        return this.data.setUint32(address * WORD_SIZE + offset, value);
+    }
+
+    get_4_bytes_at_offset(address : number, offset : number) {
+        return this.data.getUint32(address * WORD_SIZE + offset);
+    }
+	
     // all values (including literals) are allocated on the heap.
 
     // We allocate canonical values for
@@ -359,6 +364,51 @@ export class Heap {
     get_Builtin_id(address: number) {
         return this.get_byte_at_offset(address, 1)
     }
+
+    //Strings, taken from homework solution
+    is_String(address : number) {
+        return this.get_tag(address) === String_tag;
+    }
+    
+    // strings:
+    // [1 byte tag, 4 byte hash to stringPool,
+    // 2 bytes #children, 1 byte unused]
+    // Note: #children is 0
+
+    // Hash any string to a 32-bit unsigned integer
+    hashString(str : string) {
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = (hash << 5) + hash + char;
+            hash = hash & hash;
+        }
+        return hash >>> 0;
+    };
+
+    allocate_String(str : string) {
+        const hash = this.hashString(str);
+        const address_or_undefined = this.stringPool[hash];
+
+        if (address_or_undefined !== undefined) {
+            return address_or_undefined[0];
+        }
+        const address = this.allocate(String_tag, 1);
+        this.set_4_bytes_at_offset(address, 1, hash);
+
+        // Store the string in the string pool
+        this.stringPool[hash] = [address, str];
+        return address;
+    }
+
+    get_string_hash(address : number) {
+        return this.get_4_bytes_at_offset(address, 1);
+    }
+        
+    get_string(address : number) {
+        return this.stringPool[this.get_string_hash(address)][1];
+    }
+        
 
     // closure
     // [1 byte tag, 1 byte arity, 2 bytes pc, 1 byte unused, 2 bytes #children, 1 byte unused]
@@ -545,8 +595,10 @@ export class Heap {
             ? (this.is_True(x) ? true : false)
             : this.is_Number(x)
             ? this.get(x + 1)
+            : this.is_String(x)
+            ? this.get_string(x)
             : this.is_Mutex(x)
-            ? new Mutex(this.get_child(x, 0))
+            ? this.get_child(x, 0) //There should be no legitimate reasons to do this
             : this.is_Undefined(x)
             ? undefined
             : this.is_Unassigned(x)

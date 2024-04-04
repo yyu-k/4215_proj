@@ -19,6 +19,7 @@ const type_check_generator = (type: string) => {
 }
 const is_boolean = type_check_generator('boolean')
 const is_number = type_check_generator('number')
+const is_string = type_check_generator('string')
 const is_undefined = type_check_generator('undefined')
 const is_null = type_check_generator('null')
 
@@ -27,6 +28,8 @@ const JS_value_to_address = (heap: Heap, x: unknown) => {
     ? (x ? heap.values.True : heap.values.False)
     : is_number(x)
     ? heap.allocate_Number(x as number)
+    : is_string(x)
+    ? heap.allocate_String(x as string)
     : is_undefined(x)
     ? heap.values.Undefined
     : is_null(x)
@@ -40,7 +43,7 @@ const JS_value_to_address = (heap: Heap, x: unknown) => {
 
 const binop_microcode = {
     '+': (x, y)   => (is_number(x) && is_number(y))
-                     // || (is_string(x) && is_string(y))
+                     || (is_string(x) && is_string(y))
                      ? x + y
                      : error([x,y], "+ expects two numbers" +
                                     " or two strings, got:"),
@@ -58,10 +61,12 @@ const binop_microcode = {
 }
 
 // v2 is popped before v1
-const apply_binop = (heap: Heap, op: string, v2: number, v1: number) =>
-    JS_value_to_address(heap,
+const apply_binop = (heap: Heap, op: string, v2: number, v1: number) => {
+    return     JS_value_to_address(heap,
         binop_microcode[op](heap.address_to_JS_value(v1),
                             heap.address_to_JS_value(v2)))
+}
+
 
 const unop_microcode = {
     '-': x => - x,
@@ -74,7 +79,7 @@ const apply_unop = (heap: Heap, op: string, v: number) =>
 const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
     // console.log(builtin_id, "apply_builtin: builtin_id:")
     let result = builtin_array[builtin_id](machine, heap)
-    //set_signal will set the result to heap.values.Null where the return passes in a JavaScript value rather than a heap value
+    //set_signal will set the result to heap.values.Undefined where the return passes in a JavaScript value rather than a heap value
     result = set_signal(machine, heap, result, builtin_id);
     machine.OS.pop() // pop fun
     push(machine.OS, result)
@@ -86,12 +91,12 @@ const set_signal = (machine : Machine, heap : Heap, result : unknown, builtin_id
             if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
                 machine.signal = SIGNALS.FAILED_LOCK_SIGNAL;
             }
-            return heap.values.Null 
+            return heap.values.Undefined
         case builtins['Wait'].id:
             if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
                 machine.signal = SIGNALS.FAILED_WAIT_SIGNAL;
             }
-            return heap.values.Null 
+            return heap.values.Undefined
         default:
             machine.signal = SIGNALS.DEFAULT_SIGNAL;
             return result;

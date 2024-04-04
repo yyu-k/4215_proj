@@ -13,7 +13,7 @@ const compile_and_run = (program_str : string, time_slice : number = 5) => {
 //For these tests, we need to add nonsense instructions to prevent the machines from completing execution too quickly.
 //Otherwise, the "race conditions" become unobservable. 
 
-describe('WaitGroups should work', () => {
+describe('Mutex and WaitGroups should work', () => {
     test('Without waitgroups, main termininates before subroutines complete the task of adding to head of pair', 
     () => {
         const result = compile_and_run(`

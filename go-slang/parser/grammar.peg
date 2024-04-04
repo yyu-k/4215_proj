@@ -335,7 +335,7 @@ Literal
 
 //Strings
 StringLiteral "string"
-  = DQUO chars:(!LineTerminatorSequence [^"])* DQUO {
+  = DQUO chars:(!LineTerminatorSequence char:[^"]{return char})* DQUO {
       return { tag: "Literal", value: chars.join("") };
     }
   / BQUO chars:([^`])* BQUO {

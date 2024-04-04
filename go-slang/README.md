@@ -9,26 +9,23 @@
 - Function calls
 - `if`/`else`/`else if` statements, including the optional simple statement
 - Expression statements
+- `go` statements
 - `for` statements of the following form:
     - for init; condition; post, and any variant thereof with 2 semicolons and missing one or more of the 3 statements/expressions
     - for condition
-- function declarations, returns
-- Implicit blocks are adhered to for `if` and `for` blocks: https://go.dev/ref/spec#Blocks 
+- function declarations, returns, arity checks
+- Implicit blocks are adhered to for `if`, `for`, and universe blocks: https://go.dev/ref/spec#Blocks 
 
 ### Todo
-- Universe block (instead of manual `{` and `}` for each program string)
+
 - continue and break
-- `go` statements
+- Strings
 - Types
 - Fix the compilation of the 'log' tag - should not work even in the original vm
-
-## Todo
-
+- What are the value producing statements in golang
 - Make constant declarations constant - this will require changing the compiler and VM
 - Declaration of multiple variables in the same line;
 - Immediate nested blocks? {{}}
-- The definition of sequence is a bit odd in the grammar because Blocks and IfStatement have no EOS, but other statements do
-- arity of function calls is unchecked - it is possible to pass 2 arguments to a function that accepts 1, and vice-versa
 
 ## Implementation Notes
 
