@@ -1,7 +1,7 @@
 import { Heap } from './heap'
 import { Machine } from './machine'
 import { arity, error } from './utilities'
-import { mutex_builtins } from './mutex_builtins'
+import { mutex_builtins, waitGroup_builtins } from './mutex_builtins'
 
 
 // the builtins take their arguments directly from the operand stack,
@@ -38,7 +38,7 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
 
 export const builtins = {}
 export const builtin_array: BuiltinFunction[] = []
-const all_builtins = {...mutex_builtins, ...builtin_implementation}
+const all_builtins = {...waitGroup_builtins , ...mutex_builtins, ...builtin_implementation}
 {
     let i = 0
     for (const key in all_builtins) {

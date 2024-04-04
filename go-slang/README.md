@@ -28,7 +28,7 @@
 - Declaration of multiple variables in the same line;
 - Immediate nested blocks? {{}}
 - The definition of sequence is a bit odd in the grammar because Blocks and IfStatement have no EOS, but other statements do
-- arity of function calls is unchecked - it is possible to pass 2 arguments to a function that accepts 1. 
+- arity of function calls is unchecked - it is possible to pass 2 arguments to a function that accepts 1, and vice-versa
 
 ## Implementation Notes
 

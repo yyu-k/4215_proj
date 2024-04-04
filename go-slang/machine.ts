@@ -5,6 +5,7 @@ import { MachineSignal } from './MachineSignal';
 
 const DEFAULT_SIGNAL = 0;
 const FAILED_LOCK_SIGNAL = 1;
+const FAILED_WAIT_SIGNAL = 2;
 
 const type_check_generator = (type: string) => {
     return (x: unknown) => {
@@ -81,6 +82,11 @@ const set_signal = (machine : Machine, result : unknown, builtin_id : number) =>
         case builtins['Lock'].id:
             if (result === false) {
                 machine.signal = FAILED_LOCK_SIGNAL;
+            }
+            break;
+        case builtins['Wait'].id:
+            if (result === false) {
+                machine.signal = FAILED_WAIT_SIGNAL;
             }
             break;
         default:
@@ -298,8 +304,14 @@ export class Machine {
                     this.PC -= 1;
                 } while (this.instrs[this.PC].sym !== "Lock")
                 return new MachineSignal("signal", FAILED_LOCK_SIGNAL)
-            }
-            if (typeof result === 'object' && result != null && "type" in result) {
+            } else if (this.signal === FAILED_WAIT_SIGNAL) {
+                this.signal = DEFAULT_SIGNAL;
+                do {
+                    this.PC -= 1;
+                } while (this.instrs[this.PC].sym !== "Wait")
+                //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
+                return new MachineSignal("signal", FAILED_WAIT_SIGNAL)
+            } else if (typeof result === 'object' && result != null && "type" in result) {
                 return result as MachineSignal
             }
             instructions_ran++

@@ -4,18 +4,54 @@ import { run } from './scheduler';
 
 const program_str = `{
     const m = Mutex();
-    func test(mu, pa) {
-        Lock(m);
+    const w = WaitGroup();
+    func test(mu, pa, wg) {
+        Lock(mu);
+        current_head := head(pa);
         2 * 3;
         4 * 6;
-        set_head(head(pa) + 1); 
-        Unlock(m);
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        new_head := current_head + 1;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        set_head(pa, new_head); 
+        Unlock(mu);
+        Done(wg);
     }
     pa := pair(1,1);
     for i:=0; i<10; i = i+1 {
-        go test(m, pa);
+        Add(w);
+        go test(m, pa, w);
     }
-    head(pa);
+    Wait(w);
+    display(head(pa));
 }`;
 
 const ast = parser.parse(program_str)
