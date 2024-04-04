@@ -5,9 +5,17 @@
 import { Machine } from "./machine";
 import { error, word_to_string } from "./utilities";
 
+export class Mutex {
+    identity : string = "mutex"
+    count : number
+    constructor(n : number) {
+        this.count = n;
+    }
+}
+
 const WORD_SIZE = 8
 
-const NODE_SIZE = 10
+const NODE_SIZE = 20
 
 const MARK_OFFSET = 7; //last byte in the tag
 const MARKED = 1;
@@ -39,6 +47,7 @@ const Frame_tag          = 9  // 0000 1001
 const Environment_tag    = 10 // 0000 1010
 const Pair_tag           = 11
 const Builtin_tag        = 12
+const Mutex_tag          = 13
 
 type Builtins = Record<string, { id: number }>
 type Constants = Record<string, unknown>
@@ -506,12 +515,38 @@ export class Heap {
         return this.get_tag(address) === Number_tag
     }
 
+    allocate_Mutex(n : number) {
+        const mutex_address = this.allocate(Mutex_tag, 2);
+        this.set_child(mutex_address, 0, n);
+        return mutex_address
+    }
+
+    set_Mutex_value(address : number, value : number) {
+        if (!this.is_Mutex(address)) {
+            throw TypeError("Attempt to set Mutex value of an address which is not a Mutex");
+        }
+        return this.set_child(address, 0, value);
+    }
+
+    get_Mutex_value(address : number) {
+        if (!this.is_Mutex(address)) {
+            throw TypeError("Attempt to get Mutex value of an address which is not a Mutex");
+        }
+        return this.get_child(address, 0);
+    }
+
+    is_Mutex(address : number) {
+        return this.get_tag(address) === Mutex_tag
+    }
+
     // conversions between addresses and JS_value
     address_to_JS_value(x: number) {
         return this.is_Boolean(x)
             ? (this.is_True(x) ? true : false)
             : this.is_Number(x)
             ? this.get(x + 1)
+            : this.is_Mutex(x)
+            ? new Mutex(this.get_child(x, 0))
             : this.is_Undefined(x)
             ? undefined
             : this.is_Unassigned(x)
