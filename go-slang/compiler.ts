@@ -122,16 +122,24 @@ cond:
     },
 while:
     (comp, ce) => {
-        const loop_start = wc
+        const while_mark : InstructionType<'WHILE_MARK'> = {tag : 'WHILE_MARK', start: -1, end: -1}
+        instrs[wc++] = while_mark;
+        const loop_start = wc;
+        while_mark.start = wc;
         compile(comp.pred, ce)
         const jump_on_false_instruction: InstructionType<'JOF'> = {tag: 'JOF', addr: -1}
         instrs[wc++] = jump_on_false_instruction
         compile(comp.body, ce)
         instrs[wc++] = {tag: 'POP'}
         instrs[wc++] = {tag: 'GOTO', addr: loop_start}
-        jump_on_false_instruction.addr = wc
+        jump_on_false_instruction.addr = wc;
+        while_mark.end = wc;
         instrs[wc++] = {tag: 'LDC', val: undefined}
     },
+break_cont:
+    (comp, ce) => {
+        instrs[wc++] = {tag: 'BREAK_CONT', type: comp.type}
+},
 app:
     (comp, ce) => {
         compile(comp.fun, ce)

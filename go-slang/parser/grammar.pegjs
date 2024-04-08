@@ -6,6 +6,13 @@
     }
   }
 
+  class LitComp extends Component {
+    constructor(value) {
+      super("Literal");
+      this.val = value;
+    }
+  }
+
   class SequenceComp extends Component {
     //body is expected to be an array of Component objects
     constructor(body) {
@@ -45,6 +52,23 @@
         super([cond]);
       }
       this.cond = cond;
+    }
+  }
+
+  class WhileComp extends Component {
+    //pred is a expression, body is a block
+    constructor (pred, body) {
+      super("while")
+      this.pred = pred;
+      this.body = body;
+    }
+  }
+
+  class BreakContComp extends Component {
+    //type is either "break" or "continue"
+    constructor (type) {
+      super("break_cont");
+      this.type = type;
     }
   }
 
@@ -99,6 +123,7 @@ Statement
     = Block
     / IfStatement
     / LoopStatement
+    / LoopControlStatement
     / FunctionStatement
     / stmt:ReturnStatement EOS { return stmt }
     / stmt:NameDeclaration EOS { return stmt }
@@ -151,10 +176,10 @@ WhileStatement "while statement" //while is not used in Golang
       let while_object;
       //If there is no predicate, the predicate is true (infinite loop)
       if (pred) {
-        while_object = {tag : "while", pred, body};
+        while_object = new WhileComp(pred, body);
       } else {
-        const true_object = {"tag": "lit", "val": true};
-        while_object = {tag : "while", pred : true_object, body};
+        const true_object = new LitComp(true);
+        while_object = new WhileComp(true_object, body);
       }
       //the post statement is to be executed at the end of the loop, if it is executed
       if (post) {
@@ -169,21 +194,24 @@ WhileStatement "while statement" //while is not used in Golang
       if (init) {
         //The variable has to be initialized within its own block
         let body_array = [init, while_object];
-        return {
-            tag: "blk",
-            body: { tag: "seq", stmts: body_array },
-        }
+        return new BlockComp(body_array)
       } else {
         return while_object;
       }
     }
   / ForToken __ pred:Expression __ body:Block {
-      return {
-        tag : "while",
-        pred,
-        body
-      }
+      return new WhileComp(pred, body);
     }
+
+LoopControlStatement 
+  = BreakStatement
+  / ContStatement
+
+BreakStatement
+  = BreakToken {return new BreakContComp("break")}
+
+ContStatement
+  = ContinueToken {return new BreakContComp("continue")}
 
 IfStatement
   = main:IfBlock

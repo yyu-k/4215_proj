@@ -37,3 +37,5 @@
 - Mutexes are not associated with any particular routine - they can unlock each other's mutex. https://pkg.go.dev/sync#Mutex.Unlock 
 - +=, -=, ++, -- are not implemented
 - WaitGroups and Mutexes are indistinguishable from each other, so illegal operations can be performed using methods meant for the other. 
+- This aspect of golang is not followed - only lamdas are allowed in functions, not function definitions: https://stackoverflow.com/questions/21961615/what-are-the-problems-that-are-mitigated-by-not-allowing-nested-function-declara
+- There is a complication relating to the operation of continue and the post statement. If the continue simply jumps to the start of the while block, the post statement will not be executed if the post statement is simply appended to the end of the body (initial implementation). Changes to the post statement implementation is therefore required. 

@@ -116,6 +116,9 @@ export type Instruction =
 {tag: 'BINOP', sym: string} |
 {tag: 'JOF', addr: number} |
 {tag: 'GOTO', addr: number} |
+// start should be used by continue, end by break. This instruction should cause a runtime stack push. 
+{tag: 'WHILE_MARK', start : number, end : number}|
+{tag: 'BREAK_CONT', type : 'continue' | 'break' }|
 {tag: 'POP'} |
 {tag: 'CALL', arity: number} |
 {tag: 'TAIL_CALL', arity: number} |
@@ -156,6 +159,32 @@ JOF:
 GOTO:
     (machine, _heap, instr) =>
     machine.PC = instr.addr,
+WHILE_MARK:
+    (machine, heap, instr) => {
+        push(machine.RTS, heap.allocate_Whileframe(machine.E, instr.start, instr.end))
+    },
+BREAK_CONT:
+    (machine, heap, instr) => {
+        // keep popping...
+        const top_frame = machine.RTS.pop()!
+        if (heap.is_Callframe(top_frame)) {
+            throw error('Attempt to break or continue within function')
+        }
+        if (heap.is_Whileframe(top_frame)) {
+            // ...until top frame is a while frame
+            if (instr.type === 'continue') {
+                machine.PC = heap.get_Whileframe_start(top_frame)
+                machine.E = heap.get_Whileframe_environment(top_frame) //restore environment
+            } else if (instr.type === 'break') {
+                machine.PC = heap.get_Whileframe_end(top_frame)
+                machine.E = heap.get_Whileframe_environment(top_frame) 
+            } else {
+                throw error('Unrecognised instruction type for BREAK_CONT')
+            }
+        } else {
+            machine.PC--
+        }
+    },
 ENTER_SCOPE:
     (machine, heap, instr) => {
         push(machine.RTS, heap.allocate_Blockframe(machine.E))

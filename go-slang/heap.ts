@@ -41,6 +41,7 @@ const Pair_tag           = 11
 const Builtin_tag        = 12
 const Mutex_tag          = 13
 const String_tag         = 14
+const Whileframe_tag     = 15
 
 type Builtins = Record<string, { id: number }>
 type Constants = Record<string, unknown>
@@ -466,6 +467,30 @@ export class Heap {
     }
     is_Callframe(address: number) {
         return this.get_tag(address) === Callframe_tag
+    }
+
+    // while frame
+    // [1 byte tag, 2 bytes start address, 2 bytes end address, 2 bytes #children, 1 byte unused]
+    // followed by the address of env
+    //start and end are pc
+    allocate_Whileframe(env: number, start: number, end: number) {
+        const address = this.allocate(Whileframe_tag, 2)
+        this.set_2_bytes_at_offset(address, 1, start)
+        this.set_2_bytes_at_offset(address, 3, end)
+        this.set(address + 1, env)
+        return address
+    }
+    get_Whileframe_environment(address: number) {
+        return this.get_child(address, 0)
+    }
+    get_Whileframe_start(address: number) {
+        return this.get_2_bytes_at_offset(address, 1)
+    }
+    get_Whileframe_end(address: number) {
+        return this.get_2_bytes_at_offset(address, 3)
+    }
+    is_Whileframe(address: number) {
+        return this.get_tag(address) === Whileframe_tag
     }
 
     // environment frame
