@@ -59,6 +59,8 @@
     //pred is a expression, body is a block
     constructor (pred, body) {
       super("while")
+      this.init = null;
+      this.post = null;
       this.pred = pred;
       this.body = body;
     }
@@ -183,22 +185,14 @@ WhileStatement "while statement" //while is not used in Golang
       }
       //the post statement is to be executed at the end of the loop, if it is executed
       if (post) {
-        //deal with empty bodies
-        if (while_object.body.body.stmts === null) {
-          while_object.body.body.stmts = [post];
-        } else {
-          while_object.body.body.stmts.push(post);
-        }
+        while_object.post = post; 
       }
       //the init is executed once before evaluating the condition
       if (init) {
-        //The variable has to be initialized within its own block
-        let body_array = [init, while_object];
-        return new BlockComp(body_array)
-      } else {
-        return while_object;
+        while_object.init = init
       }
-    }
+      return while_object;
+    }      
   / ForToken __ pred:Expression __ body:Block {
       return new WhileComp(pred, body);
     }

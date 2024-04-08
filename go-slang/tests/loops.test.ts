@@ -90,3 +90,36 @@ describe('variables declared by the init statement should not be accessible outs
         expect(wrapper).toThrow(TypeError);
     });
 });
+
+
+describe('breaks should work', () => {
+    test('Nesting break in if', () => {
+        const result = compile_and_run(`
+            x := 0;
+            for i :=0; i<5; i = i + 1 {
+                if (i == 3) {
+                    break;
+                }
+                x = x + 1;
+            }
+            x;
+        `)
+        expect(result[0]).toStrictEqual([[], 3])
+    });
+});
+
+describe('continue should work', () => {
+    test('Nesting continue in if', () => {
+        const result = compile_and_run(`
+            x := 0;
+            for i :=0; i<5; i = i + 1 {
+                if (i <= 3) {
+                    continue;
+                }
+                x = x + 1;
+            }
+            x;
+        `)
+        expect(result[0]).toStrictEqual([[], 1])
+    });
+});

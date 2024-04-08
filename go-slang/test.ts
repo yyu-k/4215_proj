@@ -5,7 +5,7 @@ import { run } from './scheduler';
 const program_str = `{
     z := 0
     for i:=0; i < 10; i = i + 1 {
-        if (i != 5) {
+        if (i < 5) {
             continue
         }
         z = z + 1

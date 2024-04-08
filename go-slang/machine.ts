@@ -118,6 +118,7 @@ export type Instruction =
 {tag: 'GOTO', addr: number} |
 // start should be used by continue, end by break. This instruction should cause a runtime stack push. 
 {tag: 'WHILE_MARK', start : number, end : number}|
+{tag: 'EXIT_WHILE'}|
 {tag: 'BREAK_CONT', type : 'continue' | 'break' }|
 {tag: 'POP'} |
 {tag: 'CALL', arity: number} |
@@ -163,9 +164,22 @@ WHILE_MARK:
     (machine, heap, instr) => {
         push(machine.RTS, heap.allocate_Whileframe(machine.E, instr.start, instr.end))
     },
+EXIT_WHILE:
+    (machine, heap, instr) => {
+        if (machine.RTS.length === 0) {
+            return error("Attempt to pop RTS with length 0 while exiting while")
+        }
+        const top_frame = machine.RTS.pop()
+        if (!heap.is_Whileframe(top_frame!)) {
+            return error("Exited while loop when top frame is not a while frame")
+        }
+    },
 BREAK_CONT:
     (machine, heap, instr) => {
         // keep popping...
+        if (machine.RTS.length === 0) {
+            return error("Attempt to pop RTS with length 0 - break or continue is not within a while loop")
+        }
         const top_frame = machine.RTS.pop()!
         if (heap.is_Callframe(top_frame)) {
             throw error('Attempt to break or continue within function')
@@ -181,6 +195,8 @@ BREAK_CONT:
             } else {
                 throw error('Unrecognised instruction type for BREAK_CONT')
             }
+            //push back the whileframe
+            push(machine.RTS, top_frame);
         } else {
             machine.PC--
         }
