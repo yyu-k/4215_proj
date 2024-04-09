@@ -377,6 +377,7 @@ UnaryExpression
 CallExpression
     = FunctionCall
     / MethodCall
+    / ArrayAccess
     / PrimaryExpression
 
 FunctionCall
@@ -388,6 +389,15 @@ MethodCall
   = obj:NameExpression DOT fn:PrimaryExpression __ args:Arguments {
         return { tag: "app", fun: fn, args: [obj].concat(args) }
     }
+
+ArrayAccess "array access"
+  = symbol:Identifier __ "[" __ index:Expression __ "]" {
+      const fun = new NameComp("get_Array_element")
+      const arrayName = new NameComp(symbol)
+      const i = index
+      return new AppComp(fun, [arrayName, i])
+    }
+
 
 PrimaryExpression
     = Literal

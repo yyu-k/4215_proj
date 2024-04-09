@@ -1,0 +1,67 @@
+import { parser } from '../parser/parser';
+import { compile_program } from '../compiler';
+import { run } from '../scheduler';
+
+const heap_size = 50000
+const compile_and_run = (program_str : string) => {
+    const ast = parser.parse(program_str);
+    const instructions = compile_program(ast) ;
+    return run(instructions, heap_size)
+}
+
+describe('arrays', () => {
+    test('Can be declared, initialized with null, and accessed', () => {
+        const result = compile_and_run(`
+            var a[3] string
+            a[0]
+        `)
+        expect(result[0]).toStrictEqual([[], null])
+    });
+    test('Can be assigned to other literals', () => {
+        const result = compile_and_run(`
+            var a[3] string 
+            a[0] = "haha"
+            a[0]
+        `)
+        expect(result[0]).toStrictEqual([[], "haha"])
+    });
+    test('Can be assigned to other expressions', () => {
+        const result = compile_and_run(`
+            func add(a, b) {
+                return a + b;
+            }
+            var a[3] string 
+            a[0] = add(3, 7)
+            a[0]
+        `)
+        expect(result[0]).toStrictEqual([[], 10])
+    });
+    test('Does not allow access to index outside the size range', () => {
+        const wrapper = () => compile_and_run(`
+                var a[3] string 
+                a[3] = add(3, 7)
+            `)
+        expect(wrapper).toThrow()
+    });
+    test('Allows expressions to be used to define the size', () => {
+        const result = compile_and_run(`
+                func add(a, b) {
+                    return a + b;
+                }
+                var a[add(3,2)] string 
+                a[4] = add(3, 7)
+                a[4]
+            `)
+        expect(result[0]).toStrictEqual([[], 10])
+    });
+    test('Indexes can be a variable e.g. in loops', () => {
+        const result = compile_and_run(`
+                var a[5] string 
+                for i := 0; i < 5; i = i + 1 {
+                    a[i] = i * 2;
+                }
+                a[2] + a[3] + a[4];
+            `)
+        expect(result[0]).toStrictEqual([[], 18])
+    });
+})
