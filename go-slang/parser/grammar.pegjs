@@ -281,7 +281,7 @@ VariableDeclaration "var declaration"
     }
     / VarToken __ symbol:Identifier __ type:ArrayType {
       const fun = new NameComp("Array")
-      const args = [new LitComp(type.size)]
+      const args = [type.size]
       const expr = new AppComp(fun, args)
       return new VarComp(symbol, expr, "array");
     }
@@ -549,10 +549,10 @@ BasicType
   = Identifier
 
 ArrayType
-  = "[" __ arraySize:DecimalDigit+ __ "]" __ type:BasicType {
+  = "[" __ arraySize:Expression __ "]" __ type:BasicType {
     return {
       tag : 'array',
-      size : parseInt(arraySize),
+      size : arraySize,
       type : type
     }
   }
