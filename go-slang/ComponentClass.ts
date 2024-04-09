@@ -38,3 +38,36 @@ export class WhileComp extends Component {
       this.body = body;
     }
   }
+
+export class NameComp extends Component {
+  sym : string
+  //symbol is a string representing the name
+  constructor(sym : string) {
+    super("nam");
+    this.sym = sym;
+  }
+}
+
+export class VarComp extends Component {
+  sym : string
+  expr : Component
+  type : string | null
+  //sym is the string, expr is a component to be assigned, type is a string? Type is unused
+  constructor(sym : string, expr : Component, type : string) {
+    super("var")
+    this.sym = sym;
+    this.expr = expr
+    this.type = type
+  }
+}
+
+export class AppComp extends Component {
+  fun : NameComp
+  args : Component[]
+  //fun is a NameComp representing the function, args is an array of expression components e.g. Literals
+  constructor (fun : NameComp, args : Component[]) {
+    super("app")
+    this.fun = fun;
+    this.args = args;
+  }
+}

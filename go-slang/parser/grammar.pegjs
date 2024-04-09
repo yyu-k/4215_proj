@@ -101,6 +101,37 @@
     }
   }
 
+  class ArrayCreateComp extends Component {
+    //symbol is a string
+    //size is a component
+    constructor (size) {
+      super("array_create")
+      this.size = size
+    }
+  }
+
+  class ArrayGetComp extends Component {
+    //symbol is a string
+    //index is a component
+    constructor (symbol, index) {
+      super("array_get")
+      this.symbol = symbol
+      this.index = index
+    }
+  }
+
+  class ArraySetComp extends Component {
+    //symbol is a string
+    //index is a Component
+    //value is a Component
+    constructor (symbol, index, value) {
+      super("array_set")
+      this.symbol = symbol
+      this.index = index
+      this.value = value
+    }
+  }
+
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
@@ -285,10 +316,9 @@ VariableDeclaration "var declaration"
         }
     }
     / VarToken __ symbol:Identifier __ type:ArrayType {
-      const fun = new NameComp("Array")
-      const args = [type.size]
-      const expr = new AppComp(fun, args)
-      return new VarComp(symbol, expr, "array");
+        return new VarComp(symbol, 
+                          new ArrayCreateComp(type.size), 
+                          "array")
     }
     / VarToken __ symbol:Identifier __ type:BasicType {
       return {
@@ -324,11 +354,7 @@ VariableAssignment "assignment"
 ArrayAssignment "array assignment"
   = symbol:Identifier __ "[" __ index:Expression __ "]" __ 
     Assmt __ exp: Expression {
-      const fun = new NameComp("set_Array_element")
-      const arrayName = new NameComp(symbol)
-      const i = index
-      const v = exp
-      return new AppComp(fun, [arrayName, i, v])
+      return new ArraySetComp(symbol, index, exp)
     }
 
 GoStatement "go statement"
@@ -392,10 +418,7 @@ MethodCall
 
 ArrayAccess "array access"
   = symbol:Identifier __ "[" __ index:Expression __ "]" {
-      const fun = new NameComp("get_Array_element")
-      const arrayName = new NameComp(symbol)
-      const i = index
-      return new AppComp(fun, [arrayName, i])
+      return new ArrayGetComp(symbol, index)
     }
 
 

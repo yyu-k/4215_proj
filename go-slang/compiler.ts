@@ -5,7 +5,7 @@
 import { push } from "./utilities"
 import { builtins, added_builtins, constants } from "./builtins"
 import { Instruction, InstructionType } from "./machine"
-import {  BlockComp, WhileComp } from "./ComponentClass"
+import {  BlockComp, WhileComp, NameComp, AppComp, VarComp, Component } from "./ComponentClass"
 
 
 // a compile-time environment is an array of
@@ -241,6 +241,25 @@ fun:
                     arity : comp.prms.length,
                     body: comp.body}},
 	        ce)
+    },
+array_create:
+    (comp, ce) => {
+      const fun = new NameComp("Array")
+      const args : [Component] = [comp.size]
+      const expr = new AppComp(fun, args)
+      compile(expr, ce);
+    },
+array_get:
+    (comp, ce) => {
+        const fun = new NameComp("get_Array_element")
+        const arrayName = new NameComp(comp.symbol)
+        compile(new AppComp(fun, [arrayName, comp.index]), ce)
+    },
+array_set:
+    (comp, ce) => {
+        const fun = new NameComp("set_Array_element")
+        const arrayName = new NameComp(comp.symbol)
+        compile(new AppComp(fun, [arrayName, comp.index, comp.value]), ce)
     }
 }
 
