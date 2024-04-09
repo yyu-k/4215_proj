@@ -419,7 +419,7 @@ MethodCall
 
 PrimaryExpression
     = Literal
-    / ArraySpecification
+    / ArrayLiteral
     / ArrayAccess
     / NameExpression
     / "(" __ expr:Expression __ ")" { return expr }
@@ -427,7 +427,7 @@ PrimaryExpression
 NameExpression
   = ident:Identifier { return { tag: "nam", sym: ident } }
 
-ArraySpecification "array specification"
+ArrayLiteral "array literal"
   = array:ArrayType __ "{" __ exprs:ExpressionList __"}" {
     return new ArrayCreateComp(array.size, exprs)
   }
