@@ -244,12 +244,21 @@ ConstantDeclaration "const declaration"
     }
 
 VariableDeclaration "var declaration"
-    = VarToken __ symbol:Identifier __ Assmt __ expression:Expression   {
+    = VarToken __ symbol:Identifier __ type:Identifier? __ Assmt __ expression:Expression   {
         return {
             tag: "var",
             sym: symbol,
             expr: expression,
+            type //type is unused
         }
+    }
+    / VarToken __ symbol:Identifier __ type:Identifier {
+      return {
+          tag: "var",
+          sym: symbol,
+          expr: new LitComp(null),
+          type //type is unused
+      }
     }
 
 ShortDeclaration "short var declaration"
@@ -418,6 +427,8 @@ letter            "letter"
 //Simplified IdentifierPart 
 IdentifierPart
   = IdentifierStart
+  / letter
+  / DecimalDigit
 
 //Simplified IdentifierStart
 IdentifierStart

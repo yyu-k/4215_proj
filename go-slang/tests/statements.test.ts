@@ -75,3 +75,25 @@ describe('statements', () => {
         expect(result[0]).toStrictEqual([[], 1])
     })
 })
+
+describe('variable declarations', () => {
+    test('do not need to be coupled with an assignment if the type is declared, regardless of whether the type is checked', () => {
+        const program = `
+            var x int; 
+            x = 200;
+            x;
+        `
+        const result = compile_and_run(program)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 200])
+    })
+    test('Will throw if there is neither type declaration nor assignment', () => {
+        const program = `
+            var x; 
+            x = 5
+        `
+        const wrapper = () => compile_and_run(program)
+        expect(wrapper).toThrow()
+    })
+})
+
