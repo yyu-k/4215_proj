@@ -588,7 +588,7 @@ export class Heap {
             return error(`Attempt to allocate array of size ${size} failed due to fixed node size`)
         }
         //size of node is the tag + number of children (array elements)
-        const array_address = this.allocate(Pair_tag, size + 1)
+        const array_address = this.allocate(Array_tag, size + 1)
         //initialize array values to null
         for (let i = 0; i < size; i++) {
             this.set_child(array_address, i, this.values.Null)
@@ -609,7 +609,7 @@ export class Heap {
     set_Array_element(address : number, index : number, value : number) {
         //sets an array at a specified index to the value and returns nothing. 
         if (this.get_tag(address) !== Array_tag) {
-            return error('Attempt to set array element of an object that is not an array')
+            return error(`Attempt to set array element of an object of tag ${this.get_tag(address)} i.e. not an array`)
         }
         const n_elements = this.get_number_of_children(address)
         if (index < 0 || index + 1 > n_elements) {
@@ -671,7 +671,7 @@ export class Heap {
         const array_size = this.get_Array_size(array_address)
         for (let i = 0; i < array_size!; i++) {
             const element = this.get_Array_element(array_address, i)
-            output.push(element!)
+            output.push(this.address_to_JS_value(element!))
         }
         return output
     }

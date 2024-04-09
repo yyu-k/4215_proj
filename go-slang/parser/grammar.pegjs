@@ -155,7 +155,7 @@ Statement
     / LoopControlStatement
     / FunctionStatement
     / stmt:ReturnStatement EOS { return stmt }
-    / stmt:NameDeclaration EOS { return stmt }
+    / stmt:DeclareAssignStmt EOS { return stmt }
     / stmt:GoStatement EOS { return stmt }
     / stmt:Expression  EOS { return stmt }
     // Allow empty statements
@@ -193,6 +193,7 @@ LoopStatement "loops"
 
 SimpleStatement
     = NameDeclaration
+    / AssignmentStatement
     / Expression
 
 WhileStatement "while statement" //while is not used in Golang
@@ -256,6 +257,10 @@ IfBlock
         return new CondBlockComp(cond, stmt);
       }
 
+DeclareAssignStmt "declaration or assignment"
+  = AssignmentStatement
+  / NameDeclaration
+
 NameDeclaration "name declaration"
     = ConstantDeclaration
     / VariableDeclaration
@@ -303,6 +308,29 @@ ShortDeclaration "short var declaration"
         }
     }
 
+AssignmentStatement 
+  = VariableAssignment
+  / ArrayAssignment
+
+VariableAssignment "assignment"
+  = symbol:Identifier __ Assmt __ exp:Expression { 
+    return {
+      tag : 'assmt',
+      sym : symbol,
+      expr : exp
+    } 
+  }
+
+ArrayAssignment "array assignment"
+  = symbol:Identifier __ "[" __ index:Expression __ "]" __ 
+    Assmt __ exp: Expression {
+      const fun = new NameComp("set_Array_element")
+      const arrayName = new NameComp(symbol)
+      const i = index
+      const v = exp
+      return new AppComp(fun, [arrayName, i, v])
+    }
+
 GoStatement "go statement"
     = "go" __ call:CallExpression {
         return {
@@ -313,8 +341,7 @@ GoStatement "go statement"
     }
 
 Expression
-    = VariableAssignment
-    / BinaryExpression
+    = BinaryExpression
     / UnaryExpression
     / CallExpression
     / PrimaryExpression
@@ -346,15 +373,6 @@ UnaryExpression
         }
     }
     / CallExpression
-  
-VariableAssignment "assignment"
-  = symbol:Identifier __ Assmt __ exp:Expression { 
-    return {
-      tag : 'assmt',
-      sym : symbol,
-      expr : exp
-    } 
-  }
 
 CallExpression
     = FunctionCall
