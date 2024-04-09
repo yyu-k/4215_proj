@@ -3,14 +3,33 @@ import { compile_program } from './compiler';
 import { run } from './scheduler';
 
 const program_str = `{
-    z := 0
-    for i:=0; i < 10; i = i + 1 {
-        if (i < 5) {
-            continue
-        }
-        z = z + 1
-    } 
-    z
+    wg := WaitGroup();
+    func test(pa, wg) {
+        current_head := head(pa);
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        new_head := current_head + 1;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        6 * 11;
+        2 * 3;
+        4 * 6;
+        7 * 9;
+        set_head(pa, new_head); 
+        Done(wg);
+    }
+    pa := pair(1,1);
+    for i:=0; i<10; i = i+1 {
+        Add(wg);
+        go test(pa, wg);
+    }
+    Wait(wg);
+    head(pa);
 }`;
 const ast = parser.parse(program_str)
 console.log(JSON.stringify(ast.body.stmts, null, 2))

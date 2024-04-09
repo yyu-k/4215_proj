@@ -42,6 +42,7 @@ const Builtin_tag        = 12
 const Mutex_tag          = 13
 const String_tag         = 14
 const Whileframe_tag     = 15
+const Array_tag          = 16
 
 type Builtins = Record<string, { id: number }>
 type Constants = Record<string, unknown>
@@ -64,6 +65,7 @@ export class Heap {
 
     // builtins and constants
     builtins_frame: number
+    added_builtins_frame : number
     constants_frame: number
 
     // list of attached machines
@@ -73,7 +75,7 @@ export class Heap {
     stringPool : Record<number, [number, string]> = {}
 
     // allocates a heap of given size (in bytes) and returns a DataView of that
-    constructor(words: number, builtins: Builtins, constants: Constants) {
+    constructor(words: number, builtins: Builtins, added_builtins : Builtins, constants: Constants) {
         const data = new ArrayBuffer(words * WORD_SIZE)
         this.data = new DataView(data)
         this.size = words
@@ -100,6 +102,7 @@ export class Heap {
         this.machines = new Set()
 
         this.builtins_frame = this.allocate_builtin_frame(builtins)
+        this.added_builtins_frame = this.allocate_builtin_frame(added_builtins)
         this.constants_frame = this.allocate_constant_frame(constants)
 
         // Initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept.
@@ -576,6 +579,54 @@ export class Heap {
         return this.get_tag(address) === Pair_tag
     }
 
+    // Array
+    // [1 byte tag, 4 bytes unused, 2 bytes #children, 1 byte unused]
+    // followed by head and tail addresses, one word each
+    allocate_Array(size : number) {
+        //limitation with constant sized nodes
+        if (size > (NODE_SIZE - 1)){
+            return error(`Attempt to allocate array of size ${size} failed due to fixed node size`)
+        }
+        //size of node is the tag + number of children (array elements)
+        const array_address = this.allocate(Pair_tag, size + 1)
+        //initialize array values to null
+        for (let i = 0; i < size; i++) {
+            this.set_child(array_address, i, this.values.Null)
+        }
+        return array_address
+    }
+    get_Array_element(address : number, index : number) {
+        //returns the address of the index. Index is 0-indexed, same as get_child. 
+        if (this.get_tag(address) !== Array_tag) {
+            return error('Attempt to get array element of an object that is not an array')
+        }
+        const n_elements = this.get_number_of_children(address)
+        if (index < 0 || index + 1 > n_elements) {
+            return error(`Index ${index} provided for array access is out of range for array of size ${n_elements}`)
+        }
+        return this.get_child(address, index)
+    } 
+    set_Array_element(address : number, index : number, value : number) {
+        //sets an array at a specified index to the value and returns nothing. 
+        if (this.get_tag(address) !== Array_tag) {
+            return error('Attempt to set array element of an object that is not an array')
+        }
+        const n_elements = this.get_number_of_children(address)
+        if (index < 0 || index + 1 > n_elements) {
+            return error(`Index ${index} provided for setting array is out of range for array of size ${n_elements}`)
+        }
+        return this.set_child(address, index, value)
+    } 
+    get_Array_size(address : number) {
+        if (this.get_tag(address) !== Array_tag) {
+            return error('Attempt to get size of an object that is not an array')
+        }
+        return this.get_number_of_children(address)
+    }
+    is_Array(address: number) {
+        return this.get_tag(address) === Array_tag
+    }
+
     // number
     // [1 byte tag, 4 bytes unused,
     //  2 bytes #children, 1 byte unused]
@@ -615,6 +666,15 @@ export class Heap {
     }
 
     // conversions between addresses and JS_value
+    array_to_JS_value(array_address : number) {
+        const output : number[] = []
+        const array_size = this.get_Array_size(array_address)
+        for (let i = 0; i < array_size!; i++) {
+            const element = this.get_Array_element(array_address, i)
+            output.push(element!)
+        }
+        return output
+    }
     address_to_JS_value(x: number) {
         return this.is_Boolean(x)
             ? (this.is_True(x) ? true : false)
@@ -623,7 +683,9 @@ export class Heap {
             : this.is_String(x)
             ? this.get_string(x)
             : this.is_Mutex(x)
-            ? this.get_child(x, 0) //There should be no legitimate reasons to do this
+            ? `Mutex object with value ${this.get_child(x, 0)}` //this should only be used for displaying
+            : this.is_Array(x)
+            ? this.array_to_JS_value(x)
             : this.is_Undefined(x)
             ? undefined
             : this.is_Unassigned(x)

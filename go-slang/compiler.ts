@@ -3,7 +3,7 @@
 // ************************/
 
 import { push } from "./utilities"
-import { builtins, constants } from "./builtins"
+import { builtins, added_builtins, constants } from "./builtins"
 import { Instruction, InstructionType } from "./machine"
 import {  BlockComp, WhileComp } from "./ComponentClass"
 
@@ -34,9 +34,10 @@ const compile_time_environment_extend = (vs: unknown[], e: unknown[][]) => {
 
 // compile-time frames only need symbols (keys), no values
 const builtin_compile_frame = Object.keys(builtins)
+const added_builtins_compile_frame = Object.keys(added_builtins)
 const constant_compile_frame = Object.keys(constants)
 const global_compile_environment =
-        [builtin_compile_frame, constant_compile_frame]
+        [builtin_compile_frame, added_builtins_compile_frame, constant_compile_frame]
 
 // ********
 // compiler

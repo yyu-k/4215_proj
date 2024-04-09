@@ -52,3 +52,22 @@ export const waitGroup_builtins: Record<string, BuiltinFunction> = {
                     },
     is_waitGroup    : (machine, heap, _) => heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,
 }
+
+export const array_builtins: Record<string, BuiltinFunction> = {
+    Array          : (machine, heap, _size) => {
+                        const size = machine.OS.pop()!
+                        return heap.allocate_Array(size);
+                    },
+    get_Array_element : (machine, heap, _address, _index) => {
+                        const index = machine.OS.pop()!
+                        const address = machine.OS.pop()!
+                        return heap.get_Array_element(address, index)
+                    },
+    set_Array_element : (machine, heap, _address, _index, _value) => {
+                        const value = machine.OS.pop()!
+                        const index = machine.OS.pop()!
+                        const address = machine.OS.pop()!
+                        heap.set_Array_element(address, index, value)
+                    },
+    is_Array    : (machine, heap, _) => heap.is_Array(machine.OS.pop()!) ? heap.values.True : heap.values.False,
+}

@@ -1,7 +1,7 @@
 import { Heap } from './heap'
 import { error, peek, push, word_to_string } from './utilities'
-import { builtin_array, builtins, builtin_id_to_arity } from './builtins'
-import { MUTEX_CONSTANTS } from './mutex_builtins';
+import { builtin_array, builtins, builtin_id_to_arity, added_builtins } from './builtins'
+import { MUTEX_CONSTANTS } from './added_builtins';
 
 const SIGNALS = {
     DEFAULT_SIGNAL : 0,
@@ -87,12 +87,12 @@ const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
 
 const set_signal = (machine : Machine, heap : Heap, result : unknown, builtin_id : number) => {
     switch (builtin_id) {
-        case builtins['Lock'].id:
+        case added_builtins['Lock'].id:
             if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
                 machine.signal = SIGNALS.FAILED_LOCK_SIGNAL;
             }
             return heap.values.Undefined
-        case builtins['Wait'].id:
+        case added_builtins['Wait'].id:
             if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
                 machine.signal = SIGNALS.FAILED_WAIT_SIGNAL;
             }
@@ -237,7 +237,7 @@ CALL:
     (machine, heap, instr) => {
         const arity_check = (arity_1 : number, arity_2:number) => {
             if (arity_1 !== arity_2) {
-                throw Error("Mismatch in arity between number of called arguments and number of arguments in Closure");
+                return error("Mismatch in arity between number of called arguments and number of arguments in Closure");
             }
         }
 
@@ -372,6 +372,7 @@ export class Machine {
 
         this.E = heap.allocate_Environment(0)
         this.E = heap.extend_Environment(heap.builtins_frame, this.E)
+        this.E = heap.extend_Environment(heap.added_builtins_frame, this.E)
         this.E = heap.extend_Environment(heap.constants_frame, this.E)
 
         this.heap = heap
