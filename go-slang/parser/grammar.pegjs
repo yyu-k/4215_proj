@@ -74,6 +74,33 @@
     }
   }
 
+  class NameComp extends Component {
+    //symbol is a string representing the name
+    constructor(sym) {
+      super("nam");
+      this.sym = sym;
+    }
+  }
+
+  class VarComp extends Component {
+    //sym is the string, expr is a component to be assigned, type is a string? Type is unused
+    constructor(sym, expr, type) {
+      super("var")
+      this.sym = sym;
+      this.expr = expr
+      this.type = type
+    }
+  }
+  
+  class AppComp extends Component {
+    //fun is a NameComp representing the function, args is an array of expression components e.g. Literals
+    constructor (fun, args) {
+      super("app")
+      this.fun = fun;
+      this.args = args;
+    }
+  }
+
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
@@ -252,7 +279,13 @@ VariableDeclaration "var declaration"
             type //type is unused
         }
     }
-    / VarToken __ symbol:Identifier __ type:Identifier {
+    / VarToken __ symbol:Identifier __ type:ArrayType {
+      const fun = new NameComp("Array")
+      const args = [new LitComp(type.size)]
+      const expr = new AppComp(fun, args)
+      return new VarComp(symbol, expr, "array");
+    }
+    / VarToken __ symbol:Identifier __ type:BasicType {
       return {
           tag: "var",
           sym: symbol,
@@ -511,8 +544,20 @@ Tokens "tokens"
 
 ReservedWord "reserved word"
   = Tokens
+// Types
+BasicType
+  = Identifier
 
-//Special Symbols
+ArrayType
+  = "[" __ arraySize:DecimalDigit+ __ "]" __ type:BasicType {
+    return {
+      tag : 'array',
+      size : parseInt(arraySize),
+      type : type
+    }
+  }
+
+// Special Symbols
 DOT
   = "."
 SEMICOLON

@@ -55,7 +55,7 @@ export const waitGroup_builtins: Record<string, BuiltinFunction> = {
 
 export const array_builtins: Record<string, BuiltinFunction> = {
     Array          : (machine, heap, _size) => {
-                        const size = machine.OS.pop()!
+                        const size = heap.address_to_JS_value(machine.OS.pop()!)
                         return heap.allocate_Array(size);
                     },
     get_Array_element : (machine, heap, _address, _index) => {
