@@ -9,7 +9,7 @@
   class LitComp extends Component {
     constructor(value) {
       super("Literal");
-      this.val = value;
+      this.value = value;
     }
   }
 
@@ -195,6 +195,9 @@ WhileStatement "while statement" //while is not used in Golang
     }      
   / ForToken __ pred:Expression __ body:Block {
       return new WhileComp(pred, body);
+    }
+  / ForToken __  body:Block {
+      return new WhileComp(new LitComp(true), body);
     }
 
 LoopControlStatement 

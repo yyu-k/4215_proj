@@ -123,3 +123,32 @@ describe('continue should work', () => {
         expect(result[0]).toStrictEqual([[], 1])
     });
 });
+
+describe('Infinite loops should work', () => {
+    test('for loops with no init, condition or post are infinite loops which must be stopped by break', () => {
+        const result = compile_and_run(`
+            x := 0;
+            for  {
+                x = x + 1;
+                if (x == 10) {
+                    break;
+                }
+            }
+            x;
+        `)
+        expect(result[0]).toStrictEqual([[], 10])
+    });
+    test('for loops with no condition is an infinite loop which must be stopped by break', () => {
+        const result = compile_and_run(`
+            x := 0;
+            for y := 0; ; y = y + 1 {
+                x = x + 2;
+                if (y == 9) {
+                    break;
+                }
+            }
+            x;
+        `)
+        expect(result[0]).toStrictEqual([[], 20])
+    });
+});
