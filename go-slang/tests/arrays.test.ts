@@ -10,12 +10,29 @@ const compile_and_run = (program_str : string) => {
 }
 
 describe('arrays', () => {
-    test('Can be declared, initialized with null, and accessed', () => {
+    test('Can be declared via var, initialized with null, and accessed', () => {
         const result = compile_and_run(`
             var a[3] string
             a[0]
         `)
         expect(result[0]).toStrictEqual([[], null])
+    });
+    test('Can be declared via short assignment directly using literals', () => {
+        const result = compile_and_run(`
+            primes := [6]int{2, 3, 5, 7, 11, 13}
+            primes[3]
+        `)
+        expect(result[0]).toStrictEqual([[], 7])
+    });
+    test('Can be declared via short assignment directly using expressions', () => {
+        const result = compile_and_run(`
+            func number() {
+                return 200
+            }
+            nums := [6]int{2, number(), 5, 9, 11 + 7, 13 * 2}
+            nums[1]
+        `)
+        expect(result[0]).toStrictEqual([[], 200])
     });
     test('Can be assigned to other literals', () => {
         const result = compile_and_run(`

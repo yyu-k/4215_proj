@@ -5,7 +5,7 @@
 import { push } from "./utilities"
 import { builtins, added_builtins, constants } from "./builtins"
 import { Instruction, InstructionType } from "./machine"
-import {  BlockComp, WhileComp, NameComp, AppComp, VarComp, Component } from "./ComponentClass"
+import {  BlockComp, WhileComp, NameComp, AppComp, Component } from "./ComponentClass"
 
 
 // a compile-time environment is an array of
@@ -245,8 +245,11 @@ fun:
 array_create:
     (comp, ce) => {
       const fun = new NameComp("Array")
-      const args : [Component] = [comp.size]
+      const args : Component[] = [comp.size, {tag : "Literal", value : comp.initial.length}]
       const expr = new AppComp(fun, args)
+      for (let arg of comp.initial) {
+        compile(arg, ce)
+      }
       compile(expr, ce);
     },
 array_get:

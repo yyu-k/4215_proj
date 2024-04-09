@@ -1,5 +1,7 @@
+import { InitializeHook } from 'module'
 import { Heap } from './heap'
 import { Machine } from './machine'
+import { error } from './utilities'
 
 export const MUTEX_CONSTANTS = {
     MUTEX_LOCKED : 1,
@@ -54,9 +56,22 @@ export const waitGroup_builtins: Record<string, BuiltinFunction> = {
 }
 
 export const array_builtins: Record<string, BuiltinFunction> = {
-    Array          : (machine, heap, _size) => {
+    Array          : (machine, heap, _size, _initial_assingment_size) => {
+                        //Note that the true arity of this function (number of OS.pop) is a variable
+                        const initial_assingment_size = heap.address_to_JS_value(machine.OS.pop()!)
                         const size = heap.address_to_JS_value(machine.OS.pop()!)
-                        return heap.allocate_Array(size);
+                        if (initial_assingment_size > size) {
+                            return error('Attempt to assign more values to array than the array size')
+                        }
+                        const heap_address = heap.allocate_Array(size)
+                        //dark magic here - the other alternative is not to check arity
+                        const array_builtin = machine.OS.pop()
+                        for (let i = 0; i < initial_assingment_size; i++) {
+                            heap.set_Array_element(heap_address!, initial_assingment_size - i - 1, machine.OS.pop()!)
+                        }
+                        //restore the popped function
+                        machine.OS.push(array_builtin!);
+                        return heap_address
                     },
     get_Array_element : (machine, heap, _address, _index) => {
                         const index = heap.address_to_JS_value(machine.OS.pop()!)

@@ -18,7 +18,7 @@ describe('Mutex and WaitGroups should work', () => {
     () => {
         const result = compile_and_run(`
             func test(pa) {
-                current_head := head(pa);
+                current_head := pa[0];
                 2 * 3;
                 4 * 6;
                 7 * 9;
@@ -33,13 +33,13 @@ describe('Mutex and WaitGroups should work', () => {
                 2 * 3;
                 4 * 6;
                 7 * 9;
-                set_head(pa, new_head); 
+                pa[0] = new_head; 
             }
-            pa := pair(1,1);
+            pa := [2]int{1,1};
             for i:=0; i<10; i = i+1 {
                 go test(pa);
             }
-            head(pa);
+            pa[0];
         `)
         expect(result).toHaveLength(11); //10 machines + main
         expect(result[0][1]).toBeLessThan(11);
@@ -49,7 +49,7 @@ describe('Mutex and WaitGroups should work', () => {
         const result = compile_and_run(`
             wg := WaitGroup();
             func test(pa, wg) {
-                current_head := head(pa);
+                current_head := pa[0];
                 2 * 3;
                 4 * 6;
                 7 * 9;
@@ -64,16 +64,16 @@ describe('Mutex and WaitGroups should work', () => {
                 2 * 3;
                 4 * 6;
                 7 * 9;
-                set_head(pa, new_head); 
+                pa[0] = new_head; 
                 Done(wg);
             }
-            pa := pair(1,1);
+            pa := [2]int{1,1};
             for i:=0; i<10; i = i+1 {
                 Add(wg);
                 go test(pa, wg);
             }
             Wait(wg);
-            head(pa);
+            pa[0];
         `)
         expect(result).toHaveLength(11); //10 machines + main
         expect(result[0][1]).toBeLessThan(11);
@@ -85,7 +85,7 @@ describe('Mutex and WaitGroups should work', () => {
             mu := Mutex();
             func test(pa, wg, mu) {
                 Lock(mu);
-                current_head := head(pa);
+                current_head := pa[0];
                 2 * 3;
                 4 * 6;
                 7 * 9;
@@ -100,17 +100,17 @@ describe('Mutex and WaitGroups should work', () => {
                 2 * 3;
                 4 * 6;
                 7 * 9;
-                set_head(pa, new_head); 
+                pa[0] = new_head; 
                 Unlock(mu);
                 Done(wg);
             }
-            pa := pair(1,1);
+            pa := [2]int{1,1};
             for i:=0; i<10; i = i+1 {
                 Add(wg);
                 go test(pa, wg, mu);
             }
             Wait(wg);
-            head(pa);
+            pa[0];
         `)
         expect(result).toHaveLength(11); //10 machines + main
         expect(result[0][1]).toEqual(11);

@@ -104,9 +104,11 @@
   class ArrayCreateComp extends Component {
     //symbol is a string
     //size is a component
-    constructor (size) {
+    //initial is an array of Components
+    constructor (size, initial = []) {
       super("array_create")
       this.size = size
+      this.initial = initial
     }
   }
 
@@ -403,7 +405,6 @@ UnaryExpression
 CallExpression
     = FunctionCall
     / MethodCall
-    / ArrayAccess
     / PrimaryExpression
 
 FunctionCall
@@ -416,19 +417,25 @@ MethodCall
         return { tag: "app", fun: fn, args: [obj].concat(args) }
     }
 
-ArrayAccess "array access"
-  = symbol:Identifier __ "[" __ index:Expression __ "]" {
-      return new ArrayGetComp(symbol, index)
-    }
-
-
 PrimaryExpression
     = Literal
+    / ArraySpecification
+    / ArrayAccess
     / NameExpression
     / "(" __ expr:Expression __ ")" { return expr }
 
 NameExpression
   = ident:Identifier { return { tag: "nam", sym: ident } }
+
+ArraySpecification "array specification"
+  = array:ArrayType __ "{" __ exprs:ExpressionList __"}" {
+    return new ArrayCreateComp(array.size, exprs)
+  }
+
+ArrayAccess "array access"
+  = symbol:Identifier __ "[" __ index:Expression __ "]" {
+      return new ArrayGetComp(symbol, index)
+    }
 
 Arguments
     = "(" __ exprs:ExpressionList __ ")" { return exprs }
