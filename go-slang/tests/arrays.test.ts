@@ -88,4 +88,31 @@ describe('arrays', () => {
             `)
         expect(result[0]).toStrictEqual([[], 18])
     });
+    test('can be returned by functions', () => {
+        const result = compile_and_run(`
+                func array_return(rounds) {
+                    var a[rounds] string 
+                    for i := 0; i < rounds; i = i + 1 {
+                        a[i] = i * 2;
+                    }
+                    return a
+                }
+                z := array_return(11)
+                z[10]
+            `)
+        expect(result[0]).toStrictEqual([[], 20])
+    });
+    test('can be directly accessed as an expression if the expression is bracketed', () => {
+        const result = compile_and_run(`
+                func array_return(rounds) {
+                    var a[rounds] string 
+                    for i := 0; i < rounds; i = i + 1 {
+                        a[i] = i * 2;
+                    }
+                    return a
+                }
+                (array_return(11))[10]
+            `)
+        expect(result[0]).toStrictEqual([[], 20])
+    });
 })
