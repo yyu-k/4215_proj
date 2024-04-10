@@ -227,6 +227,16 @@ describe('Slices', () => {
         `)
         expect(result[0]).toStrictEqual([[], 9000])
     });
+    test('Can contain other slices', () => {
+        const result = compile_and_run(`
+            numbers := [6]int{0, 1, 2, 3, 4, 5}
+            s := numbers[2:4]
+            var d [3]
+            d[0] = s
+            d[0]
+        `)
+        expect(result[0]).toStrictEqual([[], [2,3]])
+    });
     test('Will throw with the syntax slice[low:high] if the high is too high', () => {
         const wrapper = () => compile_and_run(`
             numbers := [6]int{0, 1, 2, 3, 4, 5}
@@ -235,5 +245,47 @@ describe('Slices', () => {
             d[0]
         `)
         expect(wrapper).toThrow()
+    });
+    test('allows for appending, which will utilize the same underlying array if capacity is not exceeded', () => {
+        const result = compile_and_run(`
+            numbers := [6]int{0, 1, 2, 3, 4, 5}
+            s := numbers[1:4]
+            d := append(s, 500)
+            display(numbers[4])
+            d[3]
+        `)
+        expect(result[0]).toStrictEqual([[500], 500])
+    });
+    test('allows for appending, which will utilize a new array if capacity is exceeded', () => {
+        const result = compile_and_run(`
+            d := []int{2, 3, 5, 7, 11, 13}
+            q := d[2:]
+            q = append(q, 9000)
+            q[0] = -20
+            display(q)
+            d
+        `)
+        expect(result[0]).toStrictEqual([[[-20, 7, 11, 13, 9000]], [2,3,5,7,11,13]])
+    });
+    test('appending should not suffer from off-by-one errors', () => {
+        const result = compile_and_run(`
+            d := []int{2, 3, 5, 7, 11, 13, 19, 20, 34}
+            q := d[2:8]
+            display(q)
+            q = append(q, 9000)
+            q[0] = -20
+            display(q)
+            display(d)
+            q = append(q, 500)
+            q[0] = 75
+            display(d)
+            q
+        `)
+        expect(result[0]).toStrictEqual([[
+            [5,7,11,13,19,20], 
+            [-20, 7, 11, 13, 19, 20, 9000], 
+            [2, 3, -20, 7, 11, 13, 19, 20, 9000],
+            [2, 3, -20, 7, 11, 13, 19, 20, 9000]], 
+                [75, 7, 11, 13, 19, 20, 9000, 500]])
     });
 })
