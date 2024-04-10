@@ -252,6 +252,13 @@ array_create:
       }
       compile(expr, ce);
     },
+slice_create:
+    (comp, ce) => {
+        const fun = new NameComp("cut_Slice")
+        const args : Component[] = [comp.array, comp.low, comp.high, comp.max] //rmb to add comp.max
+        const expr = new AppComp(fun, args)
+        compile(expr, ce)
+    },
 index_get:
     (comp, ce) => {
         const fun = new NameComp("get_Slice_element")

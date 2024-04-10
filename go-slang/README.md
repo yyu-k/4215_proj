@@ -44,3 +44,7 @@
 - In Go, an array can be initialized, partially initialized, or not initialized. If an array is not initialized, the elements of the array will take the default value of the array data type. For int, the default is 0 and for string it is "". This is NOT implemented. Instead, array values are initialized to null. 
 - Slice implementation differs from https://go.dev/blog/slices-intro: 1) arrays are never exposed to the user to simplify accessing and modification. Instead, all attempts to refer to an array will result in a reference to a slice with the same length and capacity as the array; 2) The pointer of the slice doesn't point to an element of the array, but rather the tag of the array. This necessitates knowing the start index of the slice. 
 - Parser cannot achieve something like - function()[2] - this type of recursiveness is not straightforward in peggy. (function())[2] works though (need brackets)
+- nil slices are not implemented - see https://go.dev/tour/moretypes/12
+- making a slice with the make syntax specifically is not implemented - see https://go.dev/tour/moretypes/13. 
+    - a := make([]int, 5) is equivalent to var a[5], which returns a slice of length 5
+    - b := make([]int, 0, 5) is equivalent to var a[5], a = a[:0], which returns a slice of length 0 but capacity 5

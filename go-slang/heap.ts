@@ -620,7 +620,7 @@ export class Heap {
     } 
     get_Array_size(address : number) {
         if (this.get_tag(address) !== Array_tag) {
-            return error('Attempt to get size of an object that is not an array')
+            error('Attempt to get size of an object that is not an array')
         }
         return this.get_number_of_children(address)
     }
@@ -640,7 +640,7 @@ export class Heap {
         if (!this.is_Array(array_address)) {
             return error("Attempt to allocate Slice using an address which is not an Array")
         }
-        const capacity = this.get_Array_size(array_address)
+        const capacity = this.get_Array_size(array_address) - start_index
         const slice_address = this.allocate(Slice_tag, 2)
         this.set_byte_at_offset(slice_address, this.SLICE_START_INDEX_OFFSET, start_index)
         this.set_byte_at_offset(slice_address, this.SLICE_END_INDEX_OFFSET, end_index)
@@ -649,18 +649,39 @@ export class Heap {
         return slice_address
     }
     get_Slice_array_address(slice_address : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get array address of an object that is not a slice")
+        }
         return this.get_child(slice_address, 0)
     }
     get_Slice_start_index(slice_address : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get start index of an object that is not a slice")
+        }
         return this.get_byte_at_offset(slice_address, this.SLICE_START_INDEX_OFFSET)
     }
     get_Slice_end_index(slice_address : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get end index of an object that is not a slice")
+        }
         return this.get_byte_at_offset(slice_address, this.SLICE_END_INDEX_OFFSET)
     }
+    get_Slice_length(slice_address : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get length of an object that is not a slice")
+        }
+        return this.get_Slice_end_index(slice_address) - this.get_Slice_start_index(slice_address)
+    } 
     get_Slice_capacity(slice_address : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get capacity of an object that is not a slice")
+        }
         return this.get_2_bytes_at_offset(slice_address, this.SLICE_CAPACITY_OFFSET)
     }
     get_Array_index_from_Slice_index(slice_address : number, slice_index : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get the corresponding array index of an object that is not a slice")
+        }
         const slice_start_index = this.get_Slice_start_index(slice_address);
         const slice_end_index = this.get_Slice_end_index(slice_address);
         const array_index = slice_index + slice_start_index;
@@ -672,11 +693,17 @@ export class Heap {
         return array_index
     }
     get_Slice_element(slice_address : number, slice_index : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to get the slice element of an object that is not a slice")
+        }
         const array_address = this.get_Slice_array_address(slice_address)
         const array_index = this.get_Array_index_from_Slice_index(slice_address, slice_index)
         return this.get_Array_element(array_address, array_index)
     } 
     set_Slice_element(slice_address : number, slice_index : number, value : number) {
+        if (!this.is_Slice(slice_address)) {
+            error("Attempt to set the slice element of an object that is not a slice")
+        }
         const array_address = this.get_Slice_array_address(slice_address);
         const array_index = this.get_Array_index_from_Slice_index(slice_address, slice_index);
         return this.set_Array_element(array_address, array_index, value);
@@ -724,10 +751,12 @@ export class Heap {
     }
 
     // conversions between addresses and JS_value
-    array_to_JS_value(array_address : number) {
-        const output : number[] = []
-        const array_size = this.get_Array_size(array_address)
-        for (let i = 0; i < array_size!; i++) {
+    slice_to_JS_value(slice_address : number) {
+        const output : any[] = []
+        const initial_index = this.get_Slice_start_index(slice_address)
+        const end_index = this.get_Slice_end_index(slice_address)
+        const array_address = this.get_Slice_array_address(slice_address)
+        for (let i = initial_index; i < end_index!; i++) {
             const element = this.get_Array_element(array_address, i)
             output.push(this.address_to_JS_value(element!))
         }
@@ -742,8 +771,8 @@ export class Heap {
             ? this.get_string(x)
             : this.is_Mutex(x)
             ? `Mutex object with value ${this.get_child(x, 0)}` //this should only be used for displaying
-            : this.is_Array(x)
-            ? this.array_to_JS_value(x)
+            : this.is_Slice(x)
+            ? this.slice_to_JS_value(x)
             : this.is_Undefined(x)
             ? undefined
             : this.is_Unassigned(x)

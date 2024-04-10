@@ -21,7 +21,7 @@ const is_boolean = type_check_generator('boolean')
 const is_number = type_check_generator('number')
 const is_string = type_check_generator('string')
 const is_undefined = type_check_generator('undefined')
-const is_null = type_check_generator('null')
+const is_null = (x) => {return x === null};
 
 const JS_value_to_address = (heap: Heap, x: unknown) => {
     return is_boolean(x)

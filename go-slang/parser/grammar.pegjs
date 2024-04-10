@@ -112,6 +112,19 @@
     }
   }
 
+  class SliceCreateComp extends Component {
+    //symbol is a string
+    //size is a component
+    //initial is an array of Components
+    constructor (array, low, high, max) {
+      super("slice_create")
+      this.array = array
+      this.low = low
+      this.high = high
+      this.max = max
+    }
+  }
+
   class IndexGetComp extends Component {
     //symbol is a string
     //index is a component
@@ -176,12 +189,12 @@ Sequence "list of statements"
         return { tag: "seq", stmts: head ? [head] : [] }
     }
 
-Block
+Block "block" 
     = "{" seq:Sequence? "}" {
         return { tag: "blk", body: seq }
     }
 
-Statement
+Statement "statement"
     = Block
     / IfStatement
     / LoopStatement
@@ -190,16 +203,16 @@ Statement
     / stmt:ReturnStatement EOS { return stmt }
     / stmt:DeclareAssignStmt EOS { return stmt }
     / stmt:GoStatement EOS { return stmt }
-    / stmt:Expression  EOS { return stmt }
+    / stmt:Expression EOS { return stmt }
     // Allow empty statements
     / ";" __ { return null }
 
-FunctionStatement 
+FunctionStatement "function statement" 
   = FunctionDeclaration 
   / MethodDeclaration
 
-FunctionDeclaration =
-    FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
+FunctionDeclaration "function declaration"
+  = FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
         return {
             tag: "fun",
             sym: symbol,
@@ -208,8 +221,8 @@ FunctionDeclaration =
         }
     }
 
-MethodDeclaration = 
-    FunctionToken __ "(" __ receiver:Identifier __ ")" __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
+MethodDeclaration "method declaration"
+  = FunctionToken __ "(" __ receiver:Identifier __ ")" __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
         return {
             tag: "fun",
             sym: symbol,
@@ -218,13 +231,13 @@ MethodDeclaration =
         }
     }
 
-ReturnStatement =
-    ReturnToken __ exp:Expression { return {tag : "ret", expr : exp} }
+ReturnStatement "return statempt"
+  = ReturnToken __ exp:Expression { return {tag : "ret", expr : exp} }
 
 LoopStatement "loops"
   = WhileStatement
 
-SimpleStatement
+SimpleStatement "simple statement"
     = NameDeclaration
     / AssignmentStatement
     / Expression
@@ -405,6 +418,7 @@ UnaryExpression
 CallExpression
     = FunctionCall
     / MethodCall
+    / SliceExpression
     / IndexAccessExpression
     / PrimaryExpression
 
@@ -418,8 +432,32 @@ MethodCall
         return { tag: "app", fun: fn, args: [obj].concat(args) }
     }
 
+SliceExpression "slice expression"
+  = array:PrimaryExpression __ slice:Slice {
+    return new SliceCreateComp(array, slice.low, slice.high, slice.max)
+  }
+
 IndexAccessExpression "index access"
   = p:PrimaryExpression __ i:Index {return new IndexGetComp(p, i)}
+
+Slice "slice"
+  = "[" __ low:Expression? __ COLON __ high:Expression? __ "]" {
+    if (low === null) {
+      low = new LitComp(null)
+    }
+    if (high === null) {
+      high = new LitComp(null)
+    }
+    let max = new LitComp(null)
+    return {low, high, max}
+  }
+  / "[" __ low:Expression? __ COLON __ high:Expression __ COLON __ max:Expression "]" {
+    if (low) {
+      return {low, high, max}
+    } else {
+      return {low : new LitComp(null), high, max}
+    }
+  }
 
 Index "index access"
 = "[" __ index:Expression __ "]" {
@@ -451,12 +489,18 @@ Identifier
 //Added DecimalLiteral
 Literal
   = ArrayLiteral
+  / SliceLiteral
   / NullLiteral
   / BooleanLiteral
   / DecimalLiteral
   / StringLiteral
 
 //Array
+SliceLiteral "slice literal"
+  = EmptyArrayType __ "{" __ exprs:ExpressionList __"}" {
+    return new ArrayCreateComp(new LitComp(exprs.length), exprs)
+  }
+
 ArrayLiteral "array literal"
   = array:ArrayType __ "{" __ exprs:ExpressionList __"}" {
     return new ArrayCreateComp(array.size, exprs)
@@ -611,19 +655,24 @@ BasicType
   = Identifier
 
 ArrayType
-  = "[" __ arraySize:Expression __ "]" __ type:BasicType {
+  //MUST be whitespace here, not __, this follows specification and woudln't work otherwise anyway.
+  = "[" __ arraySize:Expression __ "]" type:(WhiteSpace* type:BasicType {return type})? {
     return {
       tag : 'array',
       size : arraySize,
-      type : type
     }
   }
+
+EmptyArrayType
+  = "[" __ "]" __ BasicType?
 
 // Special Symbols
 DOT
   = "."
 SEMICOLON
   = ";"
+COLON
+  = ":"
 
 //Quotes
 DQUO              "double quote"                
