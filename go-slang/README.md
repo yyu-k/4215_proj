@@ -26,6 +26,8 @@
 - Make constant declarations constant - this will require changing the compiler and VM
 - Declaration of multiple variables in the same line;
 - Immediate nested blocks? {{}}
+- should we remove pair code?
+- lambdas 
 
 ## Implementation Notes
 
@@ -40,3 +42,4 @@
 - This aspect of golang is not followed - only lamdas are allowed in functions, not function definitions: https://stackoverflow.com/questions/21961615/what-are-the-problems-that-are-mitigated-by-not-allowing-nested-function-declara
 - There is a complication relating to the operation of continue and the post statement. If the continue simply jumps to the start of the while block, the post statement will not be executed if the post statement is simply appended to the end of the body (initial implementation). Changes to the post statement implementation is therefore required. 
 - In Go, an array can be initialized, partially initialized, or not initialized. If an array is not initialized, the elements of the array will take the default value of the array data type. For int, the default is 0 and for string it is "". This is NOT implemented. Instead, array values are initialized to null. 
+- Slice implementation differs from https://go.dev/blog/slices-intro: 1) arrays are never exposed to the user to simplify accessing and modification. Instead, all attempts to refer to an array will result in a reference to a slice with the same length and capacity as the array; 2) The pointer of the slice doesn't point to an element of the array, but rather the tag of the array. This necessitates knowing the start index of the slice. 

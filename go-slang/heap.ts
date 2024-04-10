@@ -43,6 +43,7 @@ const Mutex_tag          = 13
 const String_tag         = 14
 const Whileframe_tag     = 15
 const Array_tag          = 16
+const Slice_tag          = 17
 
 type Builtins = Record<string, { id: number }>
 type Constants = Record<string, unknown>
@@ -625,6 +626,63 @@ export class Heap {
     }
     is_Array(address: number) {
         return this.get_tag(address) === Array_tag
+    }
+
+    // Slice
+    // [1 byte tag, 1 byte start index, 1 byte end index, 2 bytes capacity, 2 bytes #children, 1 byte unused]
+    // 1 child - the array
+    //Note that the end index is NOT ACCESSABLE, to keep the syntax the same as slice declaration
+    //i.e. s[2:4] creates a slice that allows for access to index 2 and 3, the start index is 2 and the end index is 4
+    SLICE_START_INDEX_OFFSET = 1
+    SLICE_END_INDEX_OFFSET = 2
+    SLICE_CAPACITY_OFFSET = 3
+    allocate_Slice(array_address : number, start_index : number, end_index : number) {
+        if (!this.is_Array(array_address)) {
+            return error("Attempt to allocate Slice using an address which is not an Array")
+        }
+        const capacity = this.get_Array_size(array_address)
+        const slice_address = this.allocate(Slice_tag, 2)
+        this.set_byte_at_offset(slice_address, this.SLICE_START_INDEX_OFFSET, start_index)
+        this.set_byte_at_offset(slice_address, this.SLICE_END_INDEX_OFFSET, end_index)
+        this.set_2_bytes_at_offset(slice_address, this.SLICE_CAPACITY_OFFSET, capacity!)
+        this.set_child(slice_address, 0, array_address)
+        return slice_address
+    }
+    get_Slice_array_address(slice_address : number) {
+        return this.get_child(slice_address, 0)
+    }
+    get_Slice_start_index(slice_address : number) {
+        return this.get_byte_at_offset(slice_address, this.SLICE_START_INDEX_OFFSET)
+    }
+    get_Slice_end_index(slice_address : number) {
+        return this.get_byte_at_offset(slice_address, this.SLICE_END_INDEX_OFFSET)
+    }
+    get_Slice_capacity(slice_address : number) {
+        return this.get_2_bytes_at_offset(slice_address, this.SLICE_CAPACITY_OFFSET)
+    }
+    get_Array_index_from_Slice_index(slice_address : number, slice_index : number) {
+        const slice_start_index = this.get_Slice_start_index(slice_address);
+        const slice_end_index = this.get_Slice_end_index(slice_address);
+        const array_index = slice_index + slice_start_index;
+        if (array_index >= slice_end_index) {
+            error(`Out of range access for slice: array index: ${array_index}; max index(exclusive): ${slice_end_index}`)
+        } else if (array_index < slice_start_index) {
+            error(`Out of range access for slice: array index: ${array_index}; min index(inclusive): ${slice_start_index}`)
+        }
+        return array_index
+    }
+    get_Slice_element(slice_address : number, slice_index : number) {
+        const array_address = this.get_Slice_array_address(slice_address)
+        const array_index = this.get_Array_index_from_Slice_index(slice_address, slice_index)
+        return this.get_Array_element(array_address, array_index)
+    } 
+    set_Slice_element(slice_address : number, slice_index : number, value : number) {
+        const array_address = this.get_Slice_array_address(slice_address);
+        const array_index = this.get_Array_index_from_Slice_index(slice_address, slice_index);
+        return this.set_Array_element(array_address, array_index, value);
+    } 
+    is_Slice(address: number) {
+        return this.get_tag(address) === Slice_tag
     }
 
     // number

@@ -34,6 +34,13 @@ describe('arrays', () => {
         `)
         expect(result[0]).toStrictEqual([[], 200])
     });
+    test('Can be declared via short assignment where the number of expressions < size', () => {
+        const result = compile_and_run(`
+            nums := [6]int{1}
+            nums[0]
+        `)
+        expect(result[0]).toStrictEqual([[], 1])
+    });
     test('Can be assigned to other literals', () => {
         const result = compile_and_run(`
             var a[3] string 

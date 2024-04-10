@@ -55,34 +55,41 @@ export const waitGroup_builtins: Record<string, BuiltinFunction> = {
     is_waitGroup    : (machine, heap, _) => heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,
 }
 
+const make_array = (machine, heap, _size, _initial_assingment_size) : [number, number] => {
+    //Note that the true arity of this function (number of OS.pop) is a variable
+    const initial_assingment_size = heap.address_to_JS_value(machine.OS.pop()!)
+    const size = heap.address_to_JS_value(machine.OS.pop()!)
+    if (initial_assingment_size > size) {
+        error('Attempt to assign more values to array than the array size')
+    }
+    const heap_address = heap.allocate_Array(size)
+    //dark magic here - the other alternative is not to check arity
+    const array_builtin = machine.OS.pop()
+    for (let i = 0; i < initial_assingment_size; i++) {
+        heap.set_Array_element(heap_address!, initial_assingment_size - i - 1, machine.OS.pop()!)
+    }
+    //restore the popped function
+    machine.OS.push(array_builtin!);
+    return [heap_address, size]
+}
 export const array_builtins: Record<string, BuiltinFunction> = {
-    Array          : (machine, heap, _size, _initial_assingment_size) => {
-                        //Note that the true arity of this function (number of OS.pop) is a variable
-                        const initial_assingment_size = heap.address_to_JS_value(machine.OS.pop()!)
-                        const size = heap.address_to_JS_value(machine.OS.pop()!)
-                        if (initial_assingment_size > size) {
-                            return error('Attempt to assign more values to array than the array size')
-                        }
-                        const heap_address = heap.allocate_Array(size)
-                        //dark magic here - the other alternative is not to check arity
-                        const array_builtin = machine.OS.pop()
-                        for (let i = 0; i < initial_assingment_size; i++) {
-                            heap.set_Array_element(heap_address!, initial_assingment_size - i - 1, machine.OS.pop()!)
-                        }
-                        //restore the popped function
-                        machine.OS.push(array_builtin!);
-                        return heap_address
+    Slice          : (machine, heap, _size, _initial_assingment_size) => {
+                        const [heap_address, size] = make_array(machine, heap, _size, _initial_assingment_size)
+                        const slice_address = heap.allocate_Slice(heap_address, 0, size)
+                        return slice_address
                     },
-    get_Array_element : (machine, heap, _address, _index) => {
-                        const index = heap.address_to_JS_value(machine.OS.pop()!)
-                        const address = machine.OS.pop()!
-                        return heap.get_Array_element(address, index)
+    get_Slice_element : (machine, heap, _address, _index) => {
+                        const slice_index = heap.address_to_JS_value(machine.OS.pop()!)
+                        const slice_address = machine.OS.pop()!
+                        return heap.get_Slice_element(slice_address, slice_index)
                     },
-    set_Array_element : (machine, heap, _address, _index, _value) => {
+    set_Slice_element : (machine, heap, _address, _index, _value) => {
                         const value = machine.OS.pop()!
-                        const index = heap.address_to_JS_value(machine.OS.pop()!)
-                        const address = machine.OS.pop()!
-                        heap.set_Array_element(address, index, value)
+                        const slice_index = heap.address_to_JS_value(machine.OS.pop()!)
+                        const slice_address = machine.OS.pop()!
+                        heap.set_Slice_element(slice_address, slice_index, value)
                     },
+    //The answer should always be false
     is_Array    : (machine, heap, _) => heap.is_Array(machine.OS.pop()!) ? heap.values.True : heap.values.False,
+    is_Slice    : (machine, heap, _) => heap.is_Slice(machine.OS.pop()!) ? heap.values.True : heap.values.False
 }

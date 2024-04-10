@@ -244,7 +244,7 @@ fun:
     },
 array_create:
     (comp, ce) => {
-      const fun = new NameComp("Array")
+      const fun = new NameComp("Slice")
       const args : Component[] = [comp.size, {tag : "Literal", value : comp.initial.length}]
       const expr = new AppComp(fun, args)
       for (let arg of comp.initial) {
@@ -254,13 +254,13 @@ array_create:
     },
 array_get:
     (comp, ce) => {
-        const fun = new NameComp("get_Array_element")
+        const fun = new NameComp("get_Slice_element")
         const arrayName = new NameComp(comp.symbol)
         compile(new AppComp(fun, [arrayName, comp.index]), ce)
     },
 array_set:
     (comp, ce) => {
-        const fun = new NameComp("set_Array_element")
+        const fun = new NameComp("set_Slice_element")
         const arrayName = new NameComp(comp.symbol)
         compile(new AppComp(fun, [arrayName, comp.index, comp.value]), ce)
     }
