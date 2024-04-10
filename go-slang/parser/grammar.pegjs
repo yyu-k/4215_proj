@@ -112,23 +112,23 @@
     }
   }
 
-  class ArrayGetComp extends Component {
+  class IndexGetComp extends Component {
     //symbol is a string
     //index is a component
-    constructor (symbol, index) {
-      super("array_get")
-      this.symbol = symbol
+    constructor (source, index) {
+      super("index_get")
+      this.source = source
       this.index = index
     }
   }
 
-  class ArraySetComp extends Component {
+  class IndexSetComp extends Component {
     //symbol is a string
     //index is a Component
     //value is a Component
-    constructor (symbol, index, value) {
-      super("array_set")
-      this.symbol = symbol
+    constructor (source, index, value) {
+      super("index_set")
+      this.source = source
       this.index = index
       this.value = value
     }
@@ -354,9 +354,9 @@ VariableAssignment "assignment"
   }
 
 ArrayAssignment "array assignment"
-  = symbol:Identifier __ "[" __ index:Expression __ "]" __ 
+  = symbol:NameExpression __ "[" __ index:Expression __ "]" __ 
     Assmt __ exp: Expression {
-      return new ArraySetComp(symbol, index, exp)
+      return new IndexSetComp(symbol, index, exp)
     }
 
 GoStatement "go statement"
@@ -372,7 +372,7 @@ Expression
     = BinaryExpression
     / UnaryExpression
     / CallExpression
-    / PrimaryExpression
+    / PrimaryExpression 
 
 MultiplicativeExpression
   = head:UnaryExpression 
@@ -405,6 +405,7 @@ UnaryExpression
 CallExpression
     = FunctionCall
     / MethodCall
+    / IndexAccessExpression
     / PrimaryExpression
 
 FunctionCall
@@ -417,25 +418,21 @@ MethodCall
         return { tag: "app", fun: fn, args: [obj].concat(args) }
     }
 
+IndexAccessExpression "index access"
+  = p:PrimaryExpression __ i:Index {return new IndexGetComp(p, i)}
+
+Index "index access"
+= "[" __ index:Expression __ "]" {
+    return index
+  }
+
 PrimaryExpression
     = Literal
-    / ArrayLiteral
-    / ArrayAccess
     / NameExpression
     / "(" __ expr:Expression __ ")" { return expr }
 
 NameExpression
   = ident:Identifier { return { tag: "nam", sym: ident } }
-
-ArrayLiteral "array literal"
-  = array:ArrayType __ "{" __ exprs:ExpressionList __"}" {
-    return new ArrayCreateComp(array.size, exprs)
-  }
-
-ArrayAccess "array access"
-  = symbol:Identifier __ "[" __ index:Expression __ "]" {
-      return new ArrayGetComp(symbol, index)
-    }
 
 Arguments
     = "(" __ exprs:ExpressionList __ ")" { return exprs }
@@ -453,10 +450,17 @@ Identifier
 
 //Added DecimalLiteral
 Literal
-  = NullLiteral
+  = ArrayLiteral
+  / NullLiteral
   / BooleanLiteral
   / DecimalLiteral
   / StringLiteral
+
+//Array
+ArrayLiteral "array literal"
+  = array:ArrayType __ "{" __ exprs:ExpressionList __"}" {
+    return new ArrayCreateComp(array.size, exprs)
+  }
 
 //Strings
 StringLiteral "string"

@@ -252,17 +252,15 @@ array_create:
       }
       compile(expr, ce);
     },
-array_get:
+index_get:
     (comp, ce) => {
         const fun = new NameComp("get_Slice_element")
-        const arrayName = new NameComp(comp.symbol)
-        compile(new AppComp(fun, [arrayName, comp.index]), ce)
+        compile(new AppComp(fun, [comp.source, comp.index]), ce)
     },
-array_set:
+index_set:
     (comp, ce) => {
         const fun = new NameComp("set_Slice_element")
-        const arrayName = new NameComp(comp.symbol)
-        compile(new AppComp(fun, [arrayName, comp.index, comp.value]), ce)
+        compile(new AppComp(fun, [comp.source, comp.index, comp.value]), ce)
     }
 }
 
