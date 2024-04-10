@@ -1,7 +1,7 @@
 import { Heap } from './heap'
 import { Machine } from './machine'
 import { arity, error } from './utilities'
-import { mutex_builtins, waitGroup_builtins } from './mutex_builtins'
+import { array_builtins, mutex_builtins, waitGroup_builtins } from './added_builtins'
 
 
 // the builtins take their arguments directly from the operand stack,
@@ -40,13 +40,15 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
 }
 
 export const builtins : Record<string, {tag : string, id: number, arity : number}> = {}
+export const added_builtins : Record<string, {tag : string, id: number, arity : number}> = {}
 export const builtin_array: BuiltinFunction[] = []
 export const builtin_id_to_arity : Record<number, number> = {}
-const all_builtins = {...waitGroup_builtins , ...mutex_builtins, ...builtin_implementation}
+const added_builtins_implementation = {...array_builtins, ...waitGroup_builtins , ...mutex_builtins}
 {
     let i = 0
-    for (const key in all_builtins) {
-        const builtin_arity = arity(all_builtins[key]) - 2;
+    // for initial builtins
+    for (const key in builtin_implementation) {
+        const builtin_arity = arity(builtin_implementation[key]) - 2;
         builtins[key] =
             {
                 tag:   'BUILTIN',
@@ -55,8 +57,22 @@ const all_builtins = {...waitGroup_builtins , ...mutex_builtins, ...builtin_impl
                 arity: builtin_arity
             }
         builtin_id_to_arity[i] = builtin_arity;
-        builtin_array[i++] = all_builtins[key]
+        builtin_array[i++] = builtin_implementation[key]
     }
+    // for added builtins
+    for (const key in added_builtins_implementation) {
+        const builtin_arity = arity(added_builtins_implementation[key]) - 2;
+        added_builtins[key] =
+            {
+                tag:   'BUILTIN',
+                id:    i,
+                // actual function length minus 2 since the first two arguments are the machine and the heap
+                arity: builtin_arity
+            }
+        builtin_id_to_arity[i] = builtin_arity;
+        builtin_array[i++] = added_builtins_implementation[key]
+    }
+
 }
 
 export const constants = {

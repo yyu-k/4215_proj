@@ -1,11 +1,11 @@
-import { builtins, constants } from "./builtins"
+import { builtins, constants, added_builtins } from "./builtins"
 import { Heap } from "./heap"
 import { Instruction, Machine } from "./machine"
 
 const DEFAULT_TIMESLICE = 100;
 
 export function run(instrs: Instruction[], heap_size: number, timeslice : number = DEFAULT_TIMESLICE) {
-    const heap = new Heap(heap_size, builtins, constants)
+    const heap = new Heap(heap_size, builtins, added_builtins, constants)
     const machines: Machine[] = []
     const machine = new Machine(instrs, heap)
     machines.push(machine)

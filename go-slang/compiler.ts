@@ -3,9 +3,9 @@
 // ************************/
 
 import { push } from "./utilities"
-import { builtins, constants } from "./builtins"
+import { builtins, added_builtins, constants } from "./builtins"
 import { Instruction, InstructionType } from "./machine"
-import {  BlockComp, WhileComp } from "./ComponentClass"
+import {  BlockComp, WhileComp, NameComp, AppComp, Component } from "./ComponentClass"
 
 
 // a compile-time environment is an array of
@@ -34,9 +34,10 @@ const compile_time_environment_extend = (vs: unknown[], e: unknown[][]) => {
 
 // compile-time frames only need symbols (keys), no values
 const builtin_compile_frame = Object.keys(builtins)
+const added_builtins_compile_frame = Object.keys(added_builtins)
 const constant_compile_frame = Object.keys(constants)
 const global_compile_environment =
-        [builtin_compile_frame, constant_compile_frame]
+        [builtin_compile_frame, added_builtins_compile_frame, constant_compile_frame]
 
 // ********
 // compiler
@@ -251,6 +252,33 @@ fun:
                     arity : comp.prms.length,
                     body: comp.body}},
 	        ce)
+    },
+array_create:
+    (comp, ce) => {
+      const fun = new NameComp("Slice")
+      const args : Component[] = [comp.size, {tag : "Literal", value : comp.initial.length}]
+      const expr = new AppComp(fun, args)
+      for (let arg of comp.initial) {
+        compile(arg, ce)
+      }
+      compile(expr, ce);
+    },
+slice_create:
+    (comp, ce) => {
+        const fun = new NameComp("cut_Slice")
+        const args : Component[] = [comp.array, comp.low, comp.high, comp.max] //rmb to add comp.max
+        const expr = new AppComp(fun, args)
+        compile(expr, ce)
+    },
+index_get:
+    (comp, ce) => {
+        const fun = new NameComp("get_Slice_element")
+        compile(new AppComp(fun, [comp.source, comp.index]), ce)
+    },
+index_set:
+    (comp, ce) => {
+        const fun = new NameComp("set_Slice_element")
+        compile(new AppComp(fun, [comp.source, comp.index, comp.value]), ce)
     }
 }
 
