@@ -345,12 +345,12 @@ VariableDeclaration "var declaration"
       }
     }
 
-ShortDeclaration "short var declaration"
-    = symbol:Identifier __ ShortAssmt __ expression:Expression {
+ShortDeclaration "short variable declaration"
+    = symbols:Identifier|1.., __ "," __| __ ShortAssmt __ expressions:Expression|1.., __ "," __| {
         return {
-          tag: "var",
-          sym: symbol,
-          expr: expression,
+          tag: "variables",
+          symbols,
+          expressions,
         }
     }
 

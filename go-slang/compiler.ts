@@ -58,7 +58,9 @@ const scan_for_locals = (comp: any) =>
     ? comp.stmts.reduce((acc, x) => acc.concat(scan_for_locals(x)), [])
     : ["var", "const", "fun"].includes(comp.tag)
       ? [comp.sym]
-      : [];
+      : comp.tag === "variables"
+        ? comp.symbols
+        : [];
 
 const compile_sequence = (seq: any[], ce: any) => {
   if (seq.length === 0) return (instrs[wc++] = { tag: "LDC", val: undefined });
@@ -232,6 +234,26 @@ const compile_comp = {
       tag: "ASSIGN",
       pos: compile_time_environment_position(ce, comp.sym),
     };
+  },
+  variables: (comp, ce) => {
+    if (comp.symbols.length !== comp.expressions.length) {
+      throw new Error("Number of variables and expressions do not match");
+    }
+    for (const expr of comp.expressions) {
+      compile(expr, ce);
+    }
+    // Assign to variables in reverse order
+    for (let i = comp.symbols.length - 1; i >= 0; i--) {
+      const sym = comp.symbols[i];
+      instrs[wc++] = {
+        tag: "ASSIGN",
+        pos: compile_time_environment_position(ce, sym),
+      };
+      // Pop values from operand stack after assignment
+      if (i !== 0) {
+        instrs[wc++] = { tag: "POP" };
+      }
+    }
   },
   const: (comp, ce) => {
     compile(comp.expr, ce);
