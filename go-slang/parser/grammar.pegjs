@@ -404,6 +404,7 @@ Expression
 
 BinaryExpression
   = head:AdditiveExpression
+    !(__ ChannelReadExpression)
     tail:(__ @rel_op __ @AdditiveExpression)*
     { return buildBinaryExpression(head, tail); }
   / AdditiveExpression

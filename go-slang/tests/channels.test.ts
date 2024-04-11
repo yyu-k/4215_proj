@@ -15,7 +15,9 @@ describe("Unbuffered channels", () => {
       chan := Channel()
       chan <- 1
     `;
-    expect(() => compile_and_run(program)).toThrow();
+    expect(() => compile_and_run(program)).toThrow(
+      "Blocked on a send without any matching receive",
+    );
   });
 
   test("Errors when blocking on receive without send", () => {
@@ -23,12 +25,9 @@ describe("Unbuffered channels", () => {
       chan := Channel()
       <- chan
     `;
-    // TODO: This is a bug
-    const result = compile_and_run(program);
-    expect(result).toHaveLength(1);
-    expect(result[0].state.state).toStrictEqual("errored");
-    expect(result[0].output).toStrictEqual([]);
-    expect(result[0].final_value).toStrictEqual(null);
+    expect(() => compile_and_run(program)).toThrow(
+      "Blocked on a receive without any matching send",
+    );
   });
 
   test("Can be used to wait for a program", () => {
