@@ -232,8 +232,10 @@ MethodDeclaration "method declaration"
         }
     }
 
-ReturnStatement "return statemnt"
-  = ReturnToken __ exp:Expression { return {tag : "ret", expr : exp} }
+ReturnStatement "return statement"
+  = ReturnToken __ expressions:Expression|1.., __ "," __| {
+    return { tag : "ret", expressions }
+  }
 
 LoopStatement "loops"
   = WhileStatement

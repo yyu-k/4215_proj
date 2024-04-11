@@ -237,7 +237,17 @@ const compile_comp = {
   },
   variables: (comp, ce) => {
     if (comp.symbols.length !== comp.expressions.length) {
-      throw new Error("Number of variables and expressions do not match");
+      if (
+        // Only allow non-matching if RHS is a single function call,
+        // which can return multiple values.
+        !(
+          comp.expressions.length === 1 &&
+          comp.symbols.length > 1 &&
+          comp.expressions[0].tag === "app"
+        )
+      ) {
+        throw new Error("Number of variables and expressions do not match");
+      }
     }
     for (const expr of comp.expressions) {
       compile(expr, ce);
@@ -263,8 +273,10 @@ const compile_comp = {
     };
   },
   ret: (comp, ce) => {
-    compile(comp.expr, ce);
-    if (comp.expr.tag === "app") {
+    for (const expr of comp.expressions) {
+      compile(expr, ce);
+    }
+    if (comp.expressions.length === 1 && comp.expressions.tag === "app") {
       // tail call: turn CALL into TAILCALL
       instrs[wc - 1].tag = "TAIL_CALL";
     } else {

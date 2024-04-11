@@ -22,6 +22,22 @@ describe("functions should be definable", () => {
   });
 });
 
+describe("functions can have multiple return values", () => {
+  test("func add(a, b) {return a + b;} add(10,15) should give 25", () => {
+    const result = compile_and_run(`
+      func identity(a, b) {
+        return a, b
+      }
+      a, b := identity(10, 15)
+      display(a)
+      display(b)
+      a + b
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[10, 15], 25]);
+  });
+});
+
 describe("It should be possible to return from a loop", () => {
   test("Function should return the correct value within loop", () => {
     const result = compile_and_run(`{
