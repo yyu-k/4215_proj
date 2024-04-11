@@ -597,78 +597,37 @@ IdentifierStart
 // Tokens
 
 BreakToken      = "break"      !IdentifierPart
-CaseToken       = "case"       !IdentifierPart
-CatchToken      = "catch"      !IdentifierPart
-ClassToken      = "class"      !IdentifierPart
 ConstToken      = "const"      !IdentifierPart
 ContinueToken   = "continue"   !IdentifierPart
-DebuggerToken   = "debugger"   !IdentifierPart
-DefaultToken    = "default"    !IdentifierPart
-DoToken         = "do"         !IdentifierPart
 ElseToken       = "else"       !IdentifierPart
-EnumToken       = "enum"       !IdentifierPart
-ExportToken     = "export"     !IdentifierPart
-ExtendsToken    = "extends"    !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
-FinallyToken    = "finally"    !IdentifierPart
 ForToken        = "for"        !IdentifierPart
 FunctionToken   = "func"       !IdentifierPart
-GetToken        = "get"        !IdentifierPart
 IfToken         = "if"         !IdentifierPart
-ImportToken     = "import"     !IdentifierPart
-InstanceofToken = "instanceof" !IdentifierPart
-InToken         = "in"         !IdentifierPart
-NewToken        = "new"        !IdentifierPart
 NullToken       = "null"       !IdentifierPart
 ReturnToken     = "return"     !IdentifierPart
-SetToken        = "set"        !IdentifierPart
-SuperToken      = "super"      !IdentifierPart
-SwitchToken     = "switch"     !IdentifierPart
-ThisToken       = "this"       !IdentifierPart
-ThrowToken      = "throw"      !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
-TryToken        = "try"        !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 WithToken       = "with"       !IdentifierPart
 
 Tokens "tokens"
-  = BreakToken 
-  / CaseToken       
-  / CatchToken      
-  / ClassToken      
-  / ConstToken      
-  / ContinueToken   
-  / DebuggerToken   
-  / DefaultToken   
-  / DoToken         
-  / ElseToken       
-  / EnumToken       
-  / ExportToken     
-  / ExtendsToken    
-  / FalseToken      
-  / FinallyToken    
-  / ForToken      
-  / FunctionToken   
-  / GetToken        
-  / IfToken         
-  / ImportToken     
-  / InstanceofToken 
-  / InToken         
-  / NewToken        
-  / NullToken       
-  / ReturnToken     
-  / SetToken        
-  / SuperToken      
-  / SwitchToken     
-  / ThisToken       
-  / ThrowToken      
-  / TrueToken       
-  / TryToken        
-  / VarToken           
-  / WithToken  
+  = BreakToken
+  / ConstToken
+  / ContinueToken
+  / ElseToken
+  / FalseToken
+  / ForToken
+  / FunctionToken
+  / IfToken
+  / NullToken
+  / ReturnToken
+  / TrueToken
+  / VarToken
+  / WithToken
 
 ReservedWord "reserved word"
   = Tokens
+
 // Types
 BasicType
   = Identifier
