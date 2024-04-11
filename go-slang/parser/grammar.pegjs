@@ -138,12 +138,10 @@
   class IndexSetComp extends Component {
     //symbol is a string
     //index is a Component
-    //value is a Component
-    constructor (source, index, value) {
+    constructor (source, index) {
       super("index_set")
       this.source = source
       this.index = index
-      this.value = value
     }
   }
 
@@ -353,24 +351,23 @@ ShortDeclaration "short variable declaration"
         }
     }
 
-AssignmentStatement 
-  = VariableAssignment
-  / ArrayAssignment
+AssignmentStatement
+    = lhs_expressions:LeftHandSideExpression|1.., __ "," __ |
+        __ Assmt __
+        rhs_expressions:Expression|1.., __ "," __|
+        {
+            return {
+                tag: 'assmt',
+                lhs_expressions,
+                rhs_expressions,
+            }
+        }
 
-VariableAssignment "assignment"
-  = symbol:Identifier __ Assmt __ exp:Expression { 
-    return {
-      tag : 'assmt',
-      sym : symbol,
-      expr : exp
-    } 
-  }
-
-ArrayAssignment "array assignment"
-  = symbol:NameExpression __ "[" __ index:Expression __ "]" __ 
-    Assmt __ exp: Expression {
-      return new IndexSetComp(symbol, index, exp)
+LeftHandSideExpression
+    = symbol:NameExpression __ "[" __ index:Expression __ "]" {
+        return new IndexSetComp(symbol, index)
     }
+    / NameExpression
 
 GoStatement "go statement"
     = "go" __ call:CallExpression {

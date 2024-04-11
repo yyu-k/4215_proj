@@ -147,10 +147,11 @@ export type Instruction =
   | { tag: "RECEIVE" }
   | { tag: "GO"; arity: number }
   | { tag: "ASSIGN"; pos: Position }
+  | { tag: "SLICE_SET_ELEMENT" }
+  | { tag: "SLICE_GET_ELEMENT" }
   | { tag: "LDF"; arity: number; addr: number }
   | { tag: "ENTER_SCOPE"; num: number }
   | { tag: "EXIT_SCOPE" }
-  | { tag: "ASSIGN"; pos: Position }
   | { tag: "DONE" };
 
 export type InstructionType<Tag extends Instruction["tag"]> = Extract<
@@ -253,6 +254,23 @@ const microcode: MicrocodeFunctions<Instruction> = {
   },
   ASSIGN: (machine, heap, instr) =>
     heap.set_Environment_value(machine.E, instr.pos, peek(machine.OS, 0)),
+  SLICE_SET_ELEMENT: (machine, heap, _instr) => {
+    const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
+    const slice_address = machine.OS.pop()!;
+    const value = machine.OS.pop()!;
+    if (!heap.is_Slice(slice_address)) {
+      error("Attempt to set slice element of an object which is not a slice");
+    }
+    heap.set_Slice_element(slice_address, slice_index, value);
+  },
+  SLICE_GET_ELEMENT: (machine, heap, _instr) => {
+    const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
+    const slice_address = machine.OS.pop()!;
+    if (!heap.is_Slice(slice_address)) {
+      error("Attempt to get slice element of an object which is not a slice");
+    }
+    push(machine.OS, heap.get_Slice_element(slice_address, slice_index));
+  },
   LDF: (machine, heap, instr) => {
     const closure_address = heap.allocate_Closure(
       instr.arity,

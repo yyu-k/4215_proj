@@ -194,15 +194,40 @@ const compile_comp = {
     }
     instrs[wc++] = { tag: "GO", arity: comp.args.length };
   },
-  assmt:
-    // store precomputed position info in ASSIGN instruction
-    (comp, ce) => {
-      compile(comp.expr, ce);
-      instrs[wc++] = {
-        tag: "ASSIGN",
-        pos: compile_time_environment_position(ce, comp.sym),
-      };
-    },
+  assmt: (comp, ce) => {
+    if (comp.lhs_expressions.length !== comp.rhs_expressions.length) {
+      if (
+        // Only allow non-matching if RHS is a single function call,
+        // which can return multiple values.
+        !(
+          comp.rhs_expressions.length === 1 &&
+          comp.lhs_expressions.length > 1 &&
+          comp.rhs_expressions[0].tag === "app"
+        )
+      ) {
+        throw new Error("Number of LHS and RHS expressions do not match");
+      }
+    }
+    for (const expr of comp.rhs_expressions) {
+      compile(expr, ce);
+    }
+    // Assign to variables in reverse order
+    for (let i = comp.lhs_expressions.length - 1; i >= 0; i--) {
+      const lhs = comp.lhs_expressions[i];
+      if (lhs.tag === "nam") {
+        instrs[wc++] = {
+          tag: "ASSIGN",
+          pos: compile_time_environment_position(ce, lhs.sym),
+        };
+      } else {
+        compile(lhs, ce);
+      }
+      // Pop values from operand stack after assignment
+      if (i !== 0) {
+        instrs[wc++] = { tag: "POP" };
+      }
+    }
+  },
   lam: (comp, ce) => {
     instrs[wc++] = { tag: "LDF", arity: comp.arity, addr: wc + 1 };
     // jump over the body of the lambda expression
@@ -317,12 +342,14 @@ const compile_comp = {
     compile(expr, ce);
   },
   index_get: (comp, ce) => {
-    const fun = new NameComp("get_Slice_element");
-    compile(new AppComp(fun, [comp.source, comp.index]), ce);
+    compile(comp.source, ce);
+    compile(comp.index, ce);
+    instrs[wc++] = { tag: "SLICE_GET_ELEMENT" };
   },
   index_set: (comp, ce) => {
-    const fun = new NameComp("set_Slice_element");
-    compile(new AppComp(fun, [comp.source, comp.index, comp.value]), ce);
+    compile(comp.source, ce);
+    compile(comp.index, ce);
+    instrs[wc++] = { tag: "SLICE_SET_ELEMENT" };
   },
 };
 

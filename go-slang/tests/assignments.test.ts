@@ -35,3 +35,33 @@ describe("short assignments", () => {
     expect(result[0]).toStrictEqual([[1, 2], 3]);
   });
 });
+
+describe("assignment expressions", () => {
+  test("single variables", () => {
+    const program = `
+      var a int
+      var b int
+      a = 1
+      b = 2
+      display(a)
+      display(b)
+      a + b
+    `;
+    const result = compile_and_run(program);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[1, 2], 3]);
+  });
+
+  test("multiple variables", () => {
+    const program = `
+      a, b := 2, 1
+      a, b = b, a
+      display(a)
+      display(b)
+      a + b
+    `;
+    const result = compile_and_run(program);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[1, 2], 3]);
+  });
+});
