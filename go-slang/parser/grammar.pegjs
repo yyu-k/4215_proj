@@ -148,12 +148,12 @@
   }
 
   function buildBinaryExpression(head, tail) {
-    return tail.reduce(function(result, element) {
+    return tail.reduce(function(result, [binop, expression]) {
       return {
         tag: "binop",
-        sym: element[1],
+        sym: binop,
         first: result,
-        second: element[3]
+        second: expression,
       };
     }, head);
   }
@@ -172,21 +172,18 @@
 }
 
 Program "global program"
-    = __ blk:Block __ { return blk }
+    = __ @Block __
     / seq:Sequence {
         // Wrap sequence without block into block
         return { tag: "blk", body: seq }
     }
 
 Sequence "list of statements"
-    = __ head:Statement tail:(__ Statement)* __ {
+    = __ stmts:Statement|.., __| __ {
         return {
           tag: "seq",
-          stmts: [head].concat(tail.flatMap(values => values.filter(value => value !== null)))
+          stmts: stmts.filter(x => x != null),
         }
-    }
-    / __ head:Statement? __ {
-        return { tag: "seq", stmts: head ? [head] : [] }
     }
 
 Block "block" 
@@ -200,11 +197,11 @@ Statement "statement"
     / LoopStatement
     / LoopControlStatement
     / FunctionStatement
-    / stmt:ReturnStatement EOS { return stmt }
-    / stmt:ChannelSendStatement EOS { return stmt }
-    / stmt:DeclareAssignStmt EOS { return stmt }
-    / stmt:GoStatement EOS { return stmt }
-    / stmt:Expression EOS { return stmt }
+    / @ReturnStatement EOS
+    / @ChannelSendStatement EOS
+    / @DeclareAssignStmt EOS
+    / @GoStatement EOS
+    / @Expression EOS
     // Allow empty statements
     / ";" __ { return null }
 
@@ -289,14 +286,14 @@ ContStatement
 
 IfStatement
   = main:IfBlock
-    el:(__ ElseToken __ blk:( IfBlock / Block ){return blk})*
+    el:(__ ElseToken __ @(IfBlock / Block))*
     {
       buildNestedIf(main, el);
       return main;
     }
 
 IfBlock 
-    = IfToken __ stmt:(stmt:SimpleStatement __ SEMICOLON __ {return stmt})? 
+    = IfToken __ stmt:(@SimpleStatement __ SEMICOLON __)?
     __ pred:Expression __ cons:Block 
       {
         const cond = new CondComp(pred, cons, new BlockComp([]));
@@ -408,23 +405,23 @@ Expression
     / CallExpression
     / PrimaryExpression 
 
-MultiplicativeExpression
-  = head:UnaryExpression 
-    tail:(__ mul_op __ UnaryExpression)*
+BinaryExpression
+  = head:AdditiveExpression
+    tail:(__ @rel_op __ @AdditiveExpression)*
     { return buildBinaryExpression(head, tail); }
-  / UnaryExpression
+  / AdditiveExpression
 
 AdditiveExpression
   = head:MultiplicativeExpression
-    tail:(__ add_op __ MultiplicativeExpression)*
+    tail:(__ @add_op __ @MultiplicativeExpression)*
     { return buildBinaryExpression(head, tail); }
   / MultiplicativeExpression
 
-BinaryExpression
-  = head:AdditiveExpression
-    tail:(__ rel_op __ AdditiveExpression)*
+MultiplicativeExpression
+  = head:UnaryExpression
+    tail:(__ @mul_op __ @UnaryExpression)*
     { return buildBinaryExpression(head, tail); }
-  / AdditiveExpression
+  / UnaryExpression
 
 UnaryExpression
     = op:UnaryOperator __ e:UnaryExpression {
@@ -488,26 +485,21 @@ Index "index access"
 PrimaryExpression
     = Literal
     / NameExpression
-    / "(" __ expr:Expression __ ")" { return expr }
+    / "(" __ @Expression __ ")"
 
 NameExpression
   = ident:Identifier { return { tag: "nam", sym: ident } }
 
 Arguments
-    = "(" __ exprs:ExpressionList __ ")" { return exprs }
+    = "(" __ @ExpressionList __ ")"
 
 ExpressionList
-    = expr:Expression exprs:( __ "," __ exp:Expression {return exp})* {
-        return [expr].concat(exprs).filter(x=>x!=null)
-      }
-    / expr:Expression? {return [expr].filter(x => x!=null)}
-
+    = Expression|.., __ "," __|
 
 //In principle should be unicode letter and unicode digit
 Identifier
     = !ReservedWord ident:$( letter ( letter / DecimalDigit )* ) {return ident}
 
-//Added DecimalLiteral
 Literal
   = ArrayLiteral
   / SliceLiteral
@@ -635,8 +627,8 @@ BasicType
   = Identifier
 
 ArrayType
-  //MUST be whitespace here, not __, this follows specification and woudln't work otherwise anyway.
-  = "[" __ arraySize:Expression __ "]" type:(WhiteSpace* type:BasicType {return type})? {
+  //MUST be whitespace here, not __, this follows specification and wouldn't work otherwise anyway.
+  = "[" __ arraySize:Expression __ "]" type:(WhiteSpace* @BasicType)? {
     return {
       tag : 'array',
       size : arraySize,
