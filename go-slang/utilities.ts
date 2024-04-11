@@ -30,3 +30,23 @@ export function word_to_string(word: number) {
   }
   return binStr;
 }
+
+export function is_boolean(x: unknown): x is boolean {
+  return typeof x === "boolean";
+}
+
+export function is_number(x: unknown): x is number {
+  return typeof x === "number";
+}
+
+export function is_string(x: unknown): x is string {
+  return typeof x === "string";
+}
+
+export function is_undefined(x: unknown): x is undefined {
+  return typeof x === "undefined";
+}
+
+export function is_null(x: unknown): x is null {
+  return x === null;
+}

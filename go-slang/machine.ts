@@ -1,5 +1,14 @@
 import { Heap } from "./heap";
-import { peek, push, word_to_string } from "./utilities";
+import {
+  is_boolean,
+  is_null,
+  is_number,
+  is_string,
+  is_undefined,
+  peek,
+  push,
+  word_to_string,
+} from "./utilities";
 import { builtin_array, builtin_id_to_arity, added_builtins } from "./builtins";
 import { MUTEX_CONSTANTS } from "./added_builtins";
 
@@ -10,26 +19,6 @@ type MachineState =
   | { state: "failed_wait" }
   | { state: "blocked_send"; chan_address: number; value: number }
   | { state: "blocked_receive"; chan_address: number };
-
-const type_check_generator = (type: string) => {
-  return (x: unknown) => {
-    if (typeof x === type) {
-      return true;
-    }
-    return false;
-  };
-};
-const is_boolean = type_check_generator("boolean");
-function is_number(x: unknown): x is number {
-  return typeof x === "number";
-}
-function is_string(x: unknown): x is string {
-  return typeof x === "string";
-}
-const is_undefined = type_check_generator("undefined");
-function is_null(x: unknown): x is null {
-  return x === null;
-}
 
 const JS_value_to_address = (heap: Heap, x: unknown) => {
   return is_boolean(x)
