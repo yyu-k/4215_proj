@@ -1,30 +1,30 @@
-import { parser } from '../parser/parser';
-import { compile_program } from '../compiler';
-import { run } from '../scheduler';
+import { parser } from "../parser/parser";
+import { compile_program } from "../compiler";
+import { run } from "../scheduler";
 
-const heap_size = 50000
-const compile_and_run = (program_str : string) => {
-    const ast = parser.parse(program_str);
-    const instructions = compile_program(ast) ;
-    return run(instructions, heap_size)
-}
+const heap_size = 50000;
+const compile_and_run = (program_str: string) => {
+  const ast = parser.parse(program_str);
+  const instructions = compile_program(ast);
+  return run(instructions, heap_size);
+};
 
-describe('functions should be definable', () => {
-    test('func add(a, b) {return a + b;} add(10,15) should give 25', () => {
-        const result = compile_and_run(`{
+describe("functions should be definable", () => {
+  test("func add(a, b) {return a + b;} add(10,15) should give 25", () => {
+    const result = compile_and_run(`{
             func add(a, b) {
             return a + b;
             }
             add(10, 15);
-        }`)
-        expect(result).toHaveLength(1)
-        expect(result[0]).toStrictEqual([[], 25]);
-    });
+        }`);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[], 25]);
+  });
 });
 
-describe('It should be possible to return from a loop', () => {
-    test('Function should return the correct value within loop', () => {
-        const result = compile_and_run(`{
+describe("It should be possible to return from a loop", () => {
+  test("Function should return the correct value within loop", () => {
+    const result = compile_and_run(`{
             func add(a) {
                 x := 0;
                 for i:=0; i<a; i = i+1{
@@ -36,12 +36,12 @@ describe('It should be possible to return from a loop', () => {
                 return a;
             }
             add(30)
-        }`)
-        expect(result).toHaveLength(1)
-        expect(result[0]).toStrictEqual([[], 5]);
-    });
-    test('Adding the result of a function to other values should work even with a while loop (operand stack not disturbed)', () => {
-        const result = compile_and_run(`{
+        }`);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[], 5]);
+  });
+  test("Adding the result of a function to other values should work even with a while loop (operand stack not disturbed)", () => {
+    const result = compile_and_run(`{
             func add(a) {
                 x := 0;
                 for i:=0; i<a; i = i+1{
@@ -53,22 +53,22 @@ describe('It should be possible to return from a loop', () => {
                 return a;
             }
             30 + add(30) + 70;
-        }`)
-        expect(result).toHaveLength(1)
-        expect(result[0]).toStrictEqual([[], 105]);
-    });
+        }`);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[], 105]);
+  });
 });
 
-describe('methods should be definable', () => {
-    test('func (i) add(a) {return i + a;} d:=10; d.add(15) should give 25', () => {
-        const result = compile_and_run(`{
+describe("methods should be definable", () => {
+  test("func (i) add(a) {return i + a;} d:=10; d.add(15) should give 25", () => {
+    const result = compile_and_run(`{
             func (i) add(a) {
             return i + a;
             }
             d := 10;
             d.add(15);
-        }`)
-        expect(result).toHaveLength(1)
-        expect(result[0]).toStrictEqual([[], 25]);
-    });
+        }`);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toStrictEqual([[], 25]);
+  });
 });

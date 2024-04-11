@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "debug": "node test.js",
+    "format": "prettier --write .",
     "test": "jest"
   },
   "author": "",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.25",
-    "@types/pegjs": "^0.10.6"
+    "@types/pegjs": "^0.10.6",
+    "prettier": "^3.2.5"
   }
 }

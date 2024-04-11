@@ -232,7 +232,7 @@ MethodDeclaration "method declaration"
         }
     }
 
-ReturnStatement "return statempt"
+ReturnStatement "return statemnt"
   = ReturnToken __ exp:Expression { return {tag : "ret", expr : exp} }
 
 LoopStatement "loops"
