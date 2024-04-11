@@ -20,6 +20,13 @@ describe('program', () => {
         expect(result[0]).toStrictEqual([[], 1])
     })
 
+    test('should be executable without a block with no extraneous whitespace', () => {
+        const program = `a:=1;a`
+        const result = compile_and_run(program)
+        expect(result).toHaveLength(1)
+        expect(result[0]).toStrictEqual([[], 1])
+    })
+
     test('should be executable with a block', () => {
         const program = `{
             a := 1;

@@ -194,7 +194,6 @@ Block "block"
         return { tag: "blk", body: seq }
     }
 
-// TODO: EOS handling doesn't work well if next line is EOF
 Statement "statement"
     = Block
     / IfStatement
@@ -728,10 +727,14 @@ WhiteSpace "whitespace"
 // Separator, Space
 Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 
+// Either an explicit semicolon, a line terminator character, or the end of the file
 EOS "end of statement"
-// Either an explicit semicolon, or a line terminator character
   = WhiteSpace* ";" WhiteSpace*
   / WhiteSpace* (LineTerminatorSequence WhiteSpace*)+
+  / EOF
+
+EOF "end of file"
+  = !.
 
 //Binary Operators
 
