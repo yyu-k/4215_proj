@@ -1,6 +1,5 @@
 import { Heap } from "./heap";
 import { Machine } from "./machine";
-import { error } from "./utilities";
 
 export const MUTEX_CONSTANTS = {
   MUTEX_LOCKED: 1,
@@ -71,7 +70,9 @@ const make_array = (
   const initial_assingment_size = heap.address_to_JS_value(machine.OS.pop()!);
   const size = heap.address_to_JS_value(machine.OS.pop()!);
   if (initial_assingment_size > size) {
-    error("Attempt to assign more values to array than the array size");
+    throw new Error(
+      "Attempt to assign more values to array than the array size",
+    );
   }
   const array_address = heap.allocate_Array(size);
   //dark magic here - the other alternative is not to check arity
@@ -145,14 +146,14 @@ export const array_builtins: Record<string, BuiltinFunction> = {
     let new_start_index = heap.address_to_JS_value(machine.OS.pop()!);
     const old_slice = machine.OS.pop()!;
     if (!heap.is_Slice(old_slice)) {
-      error("Attempt to cut an object which is not a Slice");
+      throw new Error("Attempt to cut an object which is not a Slice");
     }
     //The default is zero for the low bound and the length of the slice for the high bound.
     if (new_start_index === null) {
       new_start_index = 0;
     }
     if (new_start_index < 0) {
-      error("Attempt to slice with a <0 starting index");
+      throw new Error("Attempt to slice with a <0 starting index");
     }
     const old_start_index = heap.get_Slice_start_index(old_slice);
     const old_capacity = heap.get_Slice_capacity(old_slice);
@@ -168,10 +169,12 @@ export const array_builtins: Record<string, BuiltinFunction> = {
       new_end_index = old_start_index + new_end_index;
     }
     if (new_end_index > array_size) {
-      error("Attempt to cut a slice beyond the original slice's limit");
+      throw new Error(
+        "Attempt to cut a slice beyond the original slice's limit",
+      );
     }
     if (new_end_index - new_start_index > old_capacity) {
-      error("Capacity of slice exceeded based on index");
+      throw new Error("Capacity of slice exceeded based on index");
     }
     const new_slice = heap.allocate_Slice(
       array_address,
@@ -184,7 +187,9 @@ export const array_builtins: Record<string, BuiltinFunction> = {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
     const slice_address = machine.OS.pop()!;
     if (!heap.is_Slice(slice_address)) {
-      error("Attempt to get slice element of an object which is not a slice");
+      throw new Error(
+        "Attempt to get slice element of an object which is not a slice",
+      );
     }
     return heap.get_Slice_element(slice_address, slice_index);
   },
@@ -193,7 +198,9 @@ export const array_builtins: Record<string, BuiltinFunction> = {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
     const slice_address = machine.OS.pop()!;
     if (!heap.is_Slice(slice_address)) {
-      error("Attempt to set slice element of an object which is not a slice");
+      throw new Error(
+        "Attempt to set slice element of an object which is not a slice",
+      );
     }
     heap.set_Slice_element(slice_address, slice_index, value);
   },

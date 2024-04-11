@@ -3,7 +3,7 @@
 // *************************/
 
 import { Machine } from "./machine";
-import { error, word_to_string } from "./utilities";
+import { word_to_string } from "./utilities";
 
 const WORD_SIZE = 8;
 
@@ -157,7 +157,7 @@ export class Heap {
   // Note: payload depends on the type of node
   allocate(tag: number, size: number) {
     if (size > NODE_SIZE) {
-      error("limitation: nodes cannot be larger than 10 words");
+      throw new Error("limitation: nodes cannot be larger than 10 words");
     }
     // a value of -1 in free indicates the end of the free list
     if (this.free === -1) {
@@ -235,7 +235,7 @@ export class Heap {
     //Deal with edge case where the memory runs out before the first environment gets allocated on the HEAP
     for (const machine of this.machines) {
       if (machine.E === undefined) {
-        error("heap memory exhausted");
+        throw new Error("heap memory exhausted");
       }
     }
     //This should be an array of addresses
@@ -263,7 +263,7 @@ export class Heap {
     ROOTS.forEach(this.mark);
     this.sweep();
     if (this.free === -1) {
-      error("heap memory exhausted");
+      throw new Error("heap memory exhausted");
     }
     // console.log('mark_sweep done!')
   }
@@ -597,7 +597,7 @@ export class Heap {
   allocate_Array(size: number) {
     //limitation with constant sized nodes
     if (size > NODE_SIZE - 1) {
-      return error(
+      throw new Error(
         `Attempt to allocate array of size ${size} failed due to fixed node size`,
       );
     }
@@ -612,13 +612,13 @@ export class Heap {
   get_Array_element(address: number, index: number) {
     //returns the address of the index. Index is 0-indexed, same as get_child.
     if (this.get_tag(address) !== Array_tag) {
-      return error(
+      throw new Error(
         "Attempt to get array element of an object that is not an array",
       );
     }
     const n_elements = this.get_number_of_children(address);
     if (index < 0 || index + 1 > n_elements) {
-      return error(
+      throw new Error(
         `Index ${index} provided for array access is out of range for array of size ${n_elements}`,
       );
     }
@@ -627,13 +627,13 @@ export class Heap {
   set_Array_element(address: number, index: number, value: number) {
     //sets an array at a specified index to the value and returns nothing.
     if (this.get_tag(address) !== Array_tag) {
-      return error(
+      throw new Error(
         `Attempt to set array element of an object of tag ${this.get_tag(address)} i.e. not an array`,
       );
     }
     const n_elements = this.get_number_of_children(address);
     if (index < 0 || index + 1 > n_elements) {
-      return error(
+      throw new Error(
         `Index ${index} provided for setting array is out of range for array of size ${n_elements}`,
       );
     }
@@ -641,7 +641,7 @@ export class Heap {
   }
   get_Array_size(address: number) {
     if (this.get_tag(address) !== Array_tag) {
-      error("Attempt to get size of an object that is not an array");
+      throw new Error("Attempt to get size of an object that is not an array");
     }
     return this.get_number_of_children(address);
   }
@@ -663,7 +663,7 @@ export class Heap {
     end_index: number,
   ) {
     if (!this.is_Array(array_address)) {
-      return error(
+      throw new Error(
         "Attempt to allocate Slice using an address which is not an Array",
       );
     }
@@ -689,13 +689,17 @@ export class Heap {
   }
   get_Slice_array_address(slice_address: number) {
     if (!this.is_Slice(slice_address)) {
-      error("Attempt to get array address of an object that is not a slice");
+      throw new Error(
+        "Attempt to get array address of an object that is not a slice",
+      );
     }
     return this.get_child(slice_address, 0);
   }
   get_Slice_start_index(slice_address: number) {
     if (!this.is_Slice(slice_address)) {
-      error("Attempt to get start index of an object that is not a slice");
+      throw new Error(
+        "Attempt to get start index of an object that is not a slice",
+      );
     }
     return this.get_byte_at_offset(
       slice_address,
@@ -704,13 +708,15 @@ export class Heap {
   }
   get_Slice_end_index(slice_address: number) {
     if (!this.is_Slice(slice_address)) {
-      error("Attempt to get end index of an object that is not a slice");
+      throw new Error(
+        "Attempt to get end index of an object that is not a slice",
+      );
     }
     return this.get_byte_at_offset(slice_address, this.SLICE_END_INDEX_OFFSET);
   }
   get_Slice_length(slice_address: number) {
     if (!this.is_Slice(slice_address)) {
-      error("Attempt to get length of an object that is not a slice");
+      throw new Error("Attempt to get length of an object that is not a slice");
     }
     return (
       this.get_Slice_end_index(slice_address) -
@@ -719,7 +725,9 @@ export class Heap {
   }
   get_Slice_capacity(slice_address: number) {
     if (!this.is_Slice(slice_address)) {
-      error("Attempt to get capacity of an object that is not a slice");
+      throw new Error(
+        "Attempt to get capacity of an object that is not a slice",
+      );
     }
     return this.get_2_bytes_at_offset(
       slice_address,
@@ -728,7 +736,7 @@ export class Heap {
   }
   get_Array_index_from_Slice_index(slice_address: number, slice_index: number) {
     if (!this.is_Slice(slice_address)) {
-      error(
+      throw new Error(
         "Attempt to get the corresponding array index of an object that is not a slice",
       );
     }
@@ -736,11 +744,11 @@ export class Heap {
     const slice_end_index = this.get_Slice_end_index(slice_address);
     const array_index = slice_index + slice_start_index;
     if (array_index >= slice_end_index) {
-      error(
+      throw new Error(
         `Out of range access for slice: array index: ${array_index}; max index(exclusive): ${slice_end_index}`,
       );
     } else if (array_index < slice_start_index) {
-      error(
+      throw new Error(
         `Out of range access for slice: array index: ${array_index}; min index(inclusive): ${slice_start_index}`,
       );
     }
@@ -748,7 +756,7 @@ export class Heap {
   }
   get_Slice_element(slice_address: number, slice_index: number) {
     if (!this.is_Slice(slice_address)) {
-      error(
+      throw new Error(
         "Attempt to get the slice element of an object that is not a slice",
       );
     }
@@ -761,7 +769,7 @@ export class Heap {
   }
   set_Slice_element(slice_address: number, slice_index: number, value: number) {
     if (!this.is_Slice(slice_address)) {
-      error(
+      throw new Error(
         "Attempt to set the slice element of an object that is not a slice",
       );
     }
@@ -798,7 +806,7 @@ export class Heap {
 
   set_Mutex_value(address: number, value: number) {
     if (!this.is_Mutex(address)) {
-      throw TypeError(
+      throw new TypeError(
         "Attempt to set Mutex value of an address which is not a Mutex",
       );
     }
@@ -807,7 +815,7 @@ export class Heap {
 
   get_Mutex_value(address: number) {
     if (!this.is_Mutex(address)) {
-      throw TypeError(
+      throw new TypeError(
         "Attempt to get Mutex value of an address which is not a Mutex",
       );
     }

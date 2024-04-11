@@ -1,11 +1,6 @@
 import { Heap } from "./heap";
-import { error, peek, push, word_to_string } from "./utilities";
-import {
-  builtin_array,
-  builtins,
-  builtin_id_to_arity,
-  added_builtins,
-} from "./builtins";
+import { peek, push, word_to_string } from "./utilities";
+import { builtin_array, builtin_id_to_arity, added_builtins } from "./builtins";
 import { MUTEX_CONSTANTS } from "./added_builtins";
 
 type MachineState =
@@ -25,12 +20,16 @@ const type_check_generator = (type: string) => {
   };
 };
 const is_boolean = type_check_generator("boolean");
-const is_number = type_check_generator("number");
-const is_string = type_check_generator("string");
+function is_number(x: unknown): x is number {
+  return typeof x === "number";
+}
+function is_string(x: unknown): x is string {
+  return typeof x === "string";
+}
 const is_undefined = type_check_generator("undefined");
-const is_null = (x) => {
+function is_null(x: unknown): x is null {
   return x === null;
-};
+}
 
 const JS_value_to_address = (heap: Heap, x: unknown) => {
   return is_boolean(x)
@@ -53,10 +52,17 @@ const JS_value_to_address = (heap: Heap, x: unknown) => {
 // **********************/
 
 const binop_microcode = {
-  "+": (x, y) =>
-    (is_number(x) && is_number(y)) || (is_string(x) && is_string(y))
-      ? x + y
-      : error([x, y], "+ expects two numbers" + " or two strings, got:"),
+  "+": (x: unknown, y: unknown) => {
+    if (is_number(x) && is_number(y)) {
+      return x + y;
+    } else if (is_string(x) && is_string(y)) {
+      return x + y;
+    }
+    throw new Error(
+      "+ expects two numbers or two strings, but got the following: " +
+        JSON.stringify([x, y]),
+    );
+  },
   // todo: add error handling to JS for the following, too
   "*": (x, y) => x * y,
   "-": (x, y) => x - y,
@@ -199,23 +205,23 @@ const microcode: MicrocodeFunctions<Instruction> = {
   },
   EXIT_WHILE: (machine, heap, instr) => {
     if (machine.RTS.length === 0) {
-      return error("Attempt to pop RTS with length 0 while exiting while");
+      throw new Error("Attempt to pop RTS with length 0 while exiting while");
     }
     const top_frame = machine.RTS.pop();
     if (!heap.is_Whileframe(top_frame!)) {
-      return error("Exited while loop when top frame is not a while frame");
+      throw new Error("Exited while loop when top frame is not a while frame");
     }
   },
   BREAK_CONT: (machine, heap, instr) => {
     // keep popping...
     if (machine.RTS.length === 0) {
-      return error(
+      throw new Error(
         "Attempt to pop RTS with length 0 - break or continue is not within a while loop",
       );
     }
     const top_frame = machine.RTS.pop()!;
     if (heap.is_Callframe(top_frame)) {
-      throw error("Attempt to break or continue within function");
+      throw new Error("Attempt to break or continue within function");
     }
     if (heap.is_Whileframe(top_frame)) {
       // ...until top frame is a while frame
@@ -226,7 +232,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
         machine.PC = heap.get_Whileframe_end(top_frame);
         machine.E = heap.get_Whileframe_environment(top_frame);
       } else {
-        throw error("Unrecognised instruction type for BREAK_CONT");
+        throw new Error("Unrecognised instruction type for BREAK_CONT");
       }
       //push back the whileframe
       push(machine.RTS, top_frame);
@@ -249,7 +255,8 @@ const microcode: MicrocodeFunctions<Instruction> = {
     (machine.E = heap.get_Blockframe_environment(machine.RTS.pop()!)),
   LD: (machine, heap, instr) => {
     const val = heap.get_Environment_value(machine.E, instr.pos);
-    if (heap.is_Unassigned(val)) error("access of unassigned variable");
+    if (heap.is_Unassigned(val))
+      throw new Error("access of unassigned variable");
     push(machine.OS, val);
   },
   ASSIGN: (machine, heap, instr) =>
@@ -259,7 +266,9 @@ const microcode: MicrocodeFunctions<Instruction> = {
     const slice_address = machine.OS.pop()!;
     const value = machine.OS.pop()!;
     if (!heap.is_Slice(slice_address)) {
-      error("Attempt to set slice element of an object which is not a slice");
+      throw new Error(
+        "Attempt to set slice element of an object which is not a slice",
+      );
     }
     heap.set_Slice_element(slice_address, slice_index, value);
   },
@@ -267,7 +276,9 @@ const microcode: MicrocodeFunctions<Instruction> = {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
     const slice_address = machine.OS.pop()!;
     if (!heap.is_Slice(slice_address)) {
-      error("Attempt to get slice element of an object which is not a slice");
+      throw new Error(
+        "Attempt to get slice element of an object which is not a slice",
+      );
     }
     push(machine.OS, heap.get_Slice_element(slice_address, slice_index));
   },
@@ -282,7 +293,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
   CALL: (machine, heap, instr) => {
     const arity_check = (arity_1: number, arity_2: number) => {
       if (arity_1 !== arity_2) {
-        return error(
+        throw new Error(
           "Mismatch in arity between number of called arguments and number of arguments in Closure",
         );
       }
@@ -499,7 +510,7 @@ export class Machine {
             break;
           }
           if (this.PC == 0) {
-            throw Error(
+            throw new Error(
               "Failed to find LD Wait after Failed Wait Signal triggered",
             );
           }

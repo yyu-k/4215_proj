@@ -114,15 +114,15 @@ function handle_blocked_machines(machines: Machine[]) {
       blocked_send_machines.length > 0 &&
       blocked_receive_machines.length > 0
     ) {
-      throw Error(
+      throw new Error(
         "Blocked on send and receive without matching opposing action",
       );
     }
     if (blocked_send_machines.length > 0) {
-      throw Error("Blocked on a send without any matching receive");
+      throw new Error("Blocked on a send without any matching receive");
     }
     if (blocked_receive_machines.length > 0) {
-      throw Error("Blocked on a receive without any matching send");
+      throw new Error("Blocked on a receive without any matching send");
     }
   }
 }

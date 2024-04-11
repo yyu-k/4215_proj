@@ -1,16 +1,3 @@
-export function error(objects: any, message?: string) {
-  if (typeof message == "undefined") {
-    message = objects;
-  } else {
-    message = message + JSON.stringify(objects);
-  }
-  throw new Error(message);
-}
-
-export function arity(f: (...args: any[]) => any) {
-  return f.length;
-}
-
 // **********************
 // using arrays as stacks
 // **********************/

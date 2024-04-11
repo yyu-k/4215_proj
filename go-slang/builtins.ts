@@ -1,6 +1,5 @@
 import { Heap } from "./heap";
 import { Machine } from "./machine";
-import { arity, error } from "./utilities";
 import {
   array_builtins,
   mutex_builtins,
@@ -21,8 +20,9 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
     machine.output.push(heap.address_to_JS_value(address));
     return address;
   },
-  error: (machine, heap, _) =>
-    error(heap.address_to_JS_value(machine.OS.pop()!)),
+  error: (machine, heap, _) => {
+    throw new Error(heap.address_to_JS_value(machine.OS.pop()!));
+  },
   pair: (machine, heap, _hd, _tl) => {
     const tl = machine.OS.pop()!;
     const hd = machine.OS.pop()!;
@@ -68,11 +68,11 @@ const added_builtins_implementation = {
   let i = 0;
   // for initial builtins
   for (const key in builtin_implementation) {
-    const builtin_arity = arity(builtin_implementation[key]) - 2;
+    // Actual function length minus 2 since the first two arguments are the machine and the heap
+    const builtin_arity = builtin_implementation[key].length - 2;
     builtins[key] = {
       tag: "BUILTIN",
       id: i,
-      // actual function length minus 2 since the first two arguments are the machine and the heap
       arity: builtin_arity,
     };
     builtin_id_to_arity[i] = builtin_arity;
@@ -80,11 +80,11 @@ const added_builtins_implementation = {
   }
   // for added builtins
   for (const key in added_builtins_implementation) {
-    const builtin_arity = arity(added_builtins_implementation[key]) - 2;
+    // Actual function length minus 2 since the first two arguments are the machine and the heap
+    const builtin_arity = added_builtins_implementation[key].length - 2;
     added_builtins[key] = {
       tag: "BUILTIN",
       id: i,
-      // actual function length minus 2 since the first two arguments are the machine and the heap
       arity: builtin_arity,
     };
     builtin_id_to_arity[i] = builtin_arity;
