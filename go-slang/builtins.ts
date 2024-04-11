@@ -44,8 +44,12 @@ const builtin_implementation: Record<string, BuiltinFunction> = {
     const p = machine.OS.pop()!;
     heap.set_child(p, 1, val);
   },
-  Channel: (_machine, heap) => {
-    return heap.allocate_Channel();
+  Channel: (machine, heap, _size) => {
+    const size = heap.address_to_JS_value(machine.OS.pop()!);
+    if (typeof size !== "number") {
+      throw new Error("Channel size must be a number");
+    }
+    return heap.allocate_Channel(size);
   },
 };
 

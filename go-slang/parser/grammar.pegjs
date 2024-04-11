@@ -484,6 +484,7 @@ PrimaryExpression
     = Literal
     / NameExpression
     / "(" __ @Expression __ ")"
+    / ChannelReadExpression
 
 NameExpression
   = ident:Identifier { return { tag: "nam", sym: ident } }

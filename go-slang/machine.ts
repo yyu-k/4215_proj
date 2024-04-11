@@ -396,15 +396,27 @@ const microcode: MicrocodeFunctions<Instruction> = {
       machine.PC--;
     }
   },
-  // TODO: handle buffered channels
-  SEND: (machine, heap, instr) => {
+  SEND: (machine, heap, _instr) => {
     const value = machine.OS.pop()!;
     const chan_address = machine.OS.pop()!;
-    machine.state = { state: "blocked_send", chan_address, value };
+    if (!heap.is_Channel(chan_address)) {
+      throw new Error("Attempt to send to a non-channel");
+    }
+    if (heap.push_Channel_item(chan_address, value).state === "failed") {
+      machine.state = { state: "blocked_send", chan_address, value };
+    }
   },
-  RECEIVE: (machine, heap, instr) => {
+  RECEIVE: (machine, heap, _instr) => {
     const chan_address = machine.OS.pop()!;
-    machine.state = { state: "blocked_receive", chan_address };
+    if (!heap.is_Channel(chan_address)) {
+      throw new Error("Attempt to receive from a non-channel");
+    }
+    const result = heap.pop_Channel_item(chan_address);
+    if (result.state === "failed") {
+      machine.state = { state: "blocked_receive", chan_address };
+    } else {
+      push(machine.OS, result.value);
+    }
   },
   DONE: () => {},
 };

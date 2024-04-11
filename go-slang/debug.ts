@@ -2,35 +2,20 @@ import { parser } from "./parser/parser";
 import { compile_program } from "./compiler";
 import { run } from "./scheduler";
 
-const program_str = `{
-    wg := WaitGroup();
-    func test(pa, wg) {
-        current_head := head(pa);
-        2 * 3;
-        4 * 6;
-        7 * 9;
-        6 * 11;
-        2 * 3;
-        4 * 6;
-        new_head := current_head + 1;
-        2 * 3;
-        4 * 6;
-        7 * 9;
-        6 * 11;
-        2 * 3;
-        4 * 6;
-        7 * 9;
-        set_head(pa, new_head); 
-        Done(wg);
-    }
-    pa := pair(1,1);
-    for i:=0; i<10; i = i+1 {
-        Add(wg);
-        go test(pa, wg);
-    }
-    Wait(wg);
-    head(pa);
-}`;
+const program_str = `
+      func wait_for_program(done, chan) {
+        chan <- 1
+        chan <- 1
+        done <- 1
+      }
+      chan, done := Channel(2), Channel(0)
+      sum := 0
+      go wait_for_program(done, chan)
+      sum = sum + <-chan
+      sum = sum + <-chan
+      <-done
+      sum
+`;
 const ast = parser.parse(program_str);
 console.log(JSON.stringify(ast.body.stmts, null, 2));
 const instructions = compile_program(ast);

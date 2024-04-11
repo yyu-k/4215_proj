@@ -826,11 +826,64 @@ export class Heap {
     return this.get_tag(address) === Mutex_tag;
   }
 
-  // channel (unbuffered only for now)
-  // [1 byte tag, 2 bytes unused]
-  allocate_Channel() {
-    const waitgroup_address = this.allocate(Channel_tag, 1);
-    return waitgroup_address;
+  // channel
+  // [1 byte tag, 2 bytes number of buffered items,
+  // 2 bytes unused, 2 bytes #children, 1 byte unused]
+  // followed by children
+  allocate_Channel(size: number) {
+    // limitation with constant sized nodes
+    if (size > NODE_SIZE - 1) {
+      throw new Error(
+        `Attempt to allocate channel of size ${size} failed due to fixed node size`,
+      );
+    }
+    // size of node is the tag + number of children (array elements)
+    const channel_address = this.allocate(Channel_tag, size + 1);
+    this.set_2_bytes_at_offset(channel_address, 1, 0);
+    if (size > 0) {
+      for (let i = 0; i < size; i++) {
+        this.set_child(channel_address, i, this.values.Undefined);
+      }
+    }
+    return channel_address;
+  }
+  get_Channel_item_count(address: number) {
+    if (!this.is_Channel(address)) {
+      throw new Error("Cannot get capacity of an object that is not a channel");
+    }
+    return this.get_2_bytes_at_offset(address, 1);
+  }
+  push_Channel_item(channel_address: number, value: number) {
+    if (!this.is_Channel(channel_address)) {
+      throw new Error("Cannot push item to object that is not a channel");
+    }
+    const item_count = this.get_Channel_item_count(channel_address);
+    const size = this.get_number_of_children(channel_address);
+    if (size - item_count <= 0) {
+      return { state: "failed" };
+    }
+    this.set_child(channel_address, item_count, value);
+    this.set_2_bytes_at_offset(channel_address, 1, item_count + 1);
+    return { state: "success" };
+  }
+  pop_Channel_item(channel_address: number) {
+    if (!this.is_Channel(channel_address)) {
+      throw new Error("Cannot push item to object that is not a channel");
+    }
+    const item_count = this.get_Channel_item_count(channel_address);
+    if (item_count <= 0) {
+      return { state: "failed" } as const;
+    }
+    const value = this.get_child(channel_address, 0);
+    for (let i = 0; i < item_count - 1; i++) {
+      this.set_child(
+        channel_address,
+        i,
+        this.get_child(channel_address, i + 1),
+      );
+    }
+    this.set_2_bytes_at_offset(channel_address, 1, item_count - 1);
+    return { state: "success", value } as const;
   }
   is_Channel(address: number) {
     return this.get_tag(address) === Channel_tag;

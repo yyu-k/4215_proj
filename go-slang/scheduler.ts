@@ -16,6 +16,7 @@ export function run(
 
   let all_finished = false;
   let has_blocked_machines = false;
+  let unblock_count = 0;
   while (!all_finished) {
     all_finished = true;
 
@@ -31,7 +32,7 @@ export function run(
             result.state.state === "failed_lock" ||
             result.state.state === "failed_wait"
           ) {
-            //just switch to another machine
+            // just switch to another machine
             continue outer;
           } else if (
             result.state.state === "blocked_send" ||
@@ -54,14 +55,30 @@ export function run(
     }
 
     if (has_blocked_machines) {
-      handle_blocked_machines(machines);
+      // Throw an error if we've attempted to unblock machines multiple times without any success,
+      // which usually indicates a deadlock.
+      const should_error = unblock_count > 5 || all_finished;
+      const made_progress = handle_blocked_machines(
+        heap,
+        machines,
+        should_error,
+      );
+      if (made_progress) {
+        unblock_count = 0;
+      } else {
+        unblock_count++;
+      }
     }
   }
 
   return machines.map((machine) => machine.get_final_output());
 }
 
-function handle_blocked_machines(machines: Machine[]) {
+function handle_blocked_machines(
+  heap: Heap,
+  machines: Machine[],
+  should_error: boolean,
+) {
   const blocked_send_machines = machines.filter(
     (machine) => machine.state.state === "blocked_send",
   );
@@ -71,6 +88,7 @@ function handle_blocked_machines(machines: Machine[]) {
 
   let unblocked_machines = 0;
 
+  // Try to unblock machines which are directly blocked on each other
   outer: for (let i = 0; i < blocked_send_machines.length; i++) {
     const blocked_send_machine = blocked_send_machines[i];
 
@@ -106,7 +124,53 @@ function handle_blocked_machines(machines: Machine[]) {
     }
   }
 
+  for (let i = 0; i < blocked_send_machines.length; i++) {
+    const blocked_send_machine = blocked_send_machines[i];
+
+    // TODO: typescript doesn't narrow based on above filters
+    if (blocked_send_machine.state.state !== "blocked_send") {
+      throw new Error(
+        "Trying to handle blocked channel send on a machine that is not blocked on a send",
+      );
+    }
+
+    if (
+      heap.push_Channel_item(
+        blocked_send_machine.state.chan_address,
+        blocked_send_machine.state.value,
+      ).state === "success"
+    ) {
+      blocked_send_machine.state = { state: "default" };
+      unblocked_machines++;
+      blocked_send_machines.splice(i, 1);
+      i--;
+    }
+  }
+
+  for (let i = 0; i < blocked_receive_machines.length; i++) {
+    const blocked_receive_machine = blocked_receive_machines[i];
+
+    // TODO: typescript doesn't narrow based on above filters
+    if (blocked_receive_machine.state.state !== "blocked_receive") {
+      throw new Error(
+        "Trying to handle blocked channel receive on a machine that is not blocked on a receive",
+      );
+    }
+
+    const result = heap.pop_Channel_item(
+      blocked_receive_machine.state.chan_address,
+    );
+    if (result.state === "success") {
+      blocked_receive_machine.OS.push(result.value);
+      blocked_receive_machine.state = { state: "default" };
+      unblocked_machines++;
+      blocked_receive_machines.splice(i, 1);
+      i--;
+    }
+  }
+
   if (
+    should_error &&
     (blocked_send_machines.length > 0 || blocked_receive_machines.length > 0) &&
     unblocked_machines === 0
   ) {
@@ -125,4 +189,6 @@ function handle_blocked_machines(machines: Machine[]) {
       throw new Error("Blocked on a receive without any matching send");
     }
   }
+
+  return unblocked_machines > 0;
 }
