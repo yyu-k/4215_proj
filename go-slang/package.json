@@ -5,7 +5,7 @@
   "main": "parser.js",
   "scripts": {
     "build": "tsc",
-    "debug": "node test.js",
+    "debug": "node debug.js",
     "format": "prettier --write .",
     "test": "jest"
   },

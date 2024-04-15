@@ -542,7 +542,13 @@ export class Machine {
   }
 
   get_final_output() {
-    // TODO: expose `is_finished`?
-    return [this.output, this.heap.address_to_JS_value(peek(this.OS, 0))];
+    return {
+      state: this.state,
+      output: this.output,
+      final_value:
+        this.state.state === "finished"
+          ? this.heap.address_to_JS_value(peek(this.OS, 0))
+          : null,
+    };
   }
 }

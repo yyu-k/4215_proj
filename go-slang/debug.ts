@@ -38,7 +38,8 @@ console.log(JSON.stringify(instructions, null, 2));
 const machines = run(instructions, 50000, 2);
 
 machines.forEach((machine) => {
-  const [output, final_value] = machine;
+  const { state, output, final_value } = machine;
+  console.log("State:", state);
   console.log("Logged output:", output);
   console.log("Final value:", final_value);
 });

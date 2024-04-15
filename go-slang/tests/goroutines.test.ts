@@ -10,27 +10,36 @@ const compile_and_run = (program_str: string) => {
 };
 
 describe("goroutines", () => {
-  test("builtin function", () => {
-    const result = compile_and_run(`{
-            go display(12);
-        }`);
+  test("builtin functions called as goroutines should execute immediately", () => {
+    const result = compile_and_run(`
+      go display(12)
+    `);
     expect(result).toHaveLength(2);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
     // TODO: is `false` wrong here?
-    expect(result[0]).toStrictEqual([[], false]);
-    expect(result[1]).toStrictEqual([[12], 12]);
+    expect(result[0].final_value).toStrictEqual(false);
+    // TODO: should this be `finished`?
+    expect(result[1].state.state).toStrictEqual("default");
+    expect(result[1].output).toStrictEqual([12]);
+    expect(result[1].final_value).toStrictEqual(null);
   });
 
   // TODO: should we be able to call functions before they are defined?
   test("main machine should end before other machines without synchronization", () => {
-    const result = compile_and_run(`{
-            func add(a, b) {
-                return a + b;
-            }
-            go add(1, 2);
-            add(10, 15);
-        }`);
+    const result = compile_and_run(`
+      func add(a, b) {
+        return a + b;
+      }
+      go add(1, 2)
+      add(10, 15)
+    `);
     expect(result).toHaveLength(2);
-    expect(result[0]).toStrictEqual([[], 25]);
-    expect(result[1]).toStrictEqual([[], false]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(25);
+    expect(result[1].state.state).toStrictEqual("default");
+    expect(result[1].output).toStrictEqual([]);
+    expect(result[1].final_value).toStrictEqual(null);
   });
 });

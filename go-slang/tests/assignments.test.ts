@@ -20,7 +20,9 @@ describe("short assignments", () => {
     `;
     const result = compile_and_run(program);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[1, 2], 3]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([1, 2]);
+    expect(result[0].final_value).toStrictEqual(3);
   });
 
   test("multiple variables", () => {
@@ -32,7 +34,9 @@ describe("short assignments", () => {
     `;
     const result = compile_and_run(program);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[1, 2], 3]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([1, 2]);
+    expect(result[0].final_value).toStrictEqual(3);
   });
 });
 
@@ -49,7 +53,9 @@ describe("assignment expressions", () => {
     `;
     const result = compile_and_run(program);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[1, 2], 3]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([1, 2]);
+    expect(result[0].final_value).toStrictEqual(3);
   });
 
   test("multiple variables", () => {
@@ -62,6 +68,8 @@ describe("assignment expressions", () => {
     `;
     const result = compile_and_run(program);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[1, 2], 3]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([1, 2]);
+    expect(result[0].final_value).toStrictEqual(3);
   });
 });

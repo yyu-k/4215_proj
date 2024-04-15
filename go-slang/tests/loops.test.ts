@@ -11,81 +11,93 @@ const compile_and_run = (program_str: string) => {
 
 describe("for loops with init statement, condition, and post statement should work", () => {
   test("adding a number every loop", () => {
-    const result = compile_and_run(`{
-            x := 0;
-            for i:=0; i<10; i = i + 1 {
-                x = x + 1;
-            }
-            x;
-        }`);
+    const result = compile_and_run(`
+      x := 0
+      for i:=0; i<10; i = i + 1 {
+        x = x + 1
+      }
+      x
+    `);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[], 10]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(10);
   });
+
   test("For loop can have an empty body", () => {
-    const result = compile_and_run(`{
-            x := 0;
-            for i:=0; i<10; i = i + 1 {
-            }
-            x;
-        }`);
+    const result = compile_and_run(`
+      x := 0
+      for i:=0; i<10; i = i + 1 {
+      }
+      x
+    `);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[], 0]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(0);
   });
 });
 
 describe("for loops with init statement, condition, and no post statement should work", () => {
   test("adding to init variable within the for loop instead of using the post statement", () => {
-    const result = compile_and_run(`{
-            x := 0;
-            for i:=0; i<10; {
-                x = x + 1;
-                i = i + 2;
-            }
-            x;
-        }`);
+    const result = compile_and_run(`
+      x := 0
+      for i:=0; i<10; {
+        x = x + 1
+        i = i + 2
+      }
+      x
+    `);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[], 5]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(5);
   });
 });
 
 describe("for loops with condition, no init statement and no post statement should work", () => {
   test("condition only, 2 semicolons", () => {
-    const result = compile_and_run(`{
-            x := 0;
-            i := 0;
-            for ;i<10; {
-                x = x + 1;
-                i = i + 2;
-            }
-            x;
-        }`);
+    const result = compile_and_run(`
+      x := 0
+      i := 0
+      for ;i<10; {
+        x = x + 1
+        i = i + 2
+      }
+      x
+    `);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[], 5]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(5);
   });
+
   test("condition only, no semicolons", () => {
-    const result = compile_and_run(`{
-            x := 0;
-            i := 0;
-            for i<10 {
-                x = x + 1;
-                i = i + 2;
-            }
-            x;
-        }`);
+    const result = compile_and_run(`
+      x := 0
+      i := 0
+      for i<10 {
+        x = x + 1
+        i = i + 2
+      }
+      x
+    `);
     expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual([[], 5]);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(5);
   });
 });
 
 describe("variables declared by the init statement should not be accessible outside the loop", () => {
   test("attempting to access variables declared by the init statement should throw", () => {
-    const program1 = `{
-                            x := 0;
-                            for i:=0; i<10; i = i + 1 {
-                                x = x + 1;
-                            }
-                            i;
-                        }`;
+    const program1 = `
+      x := 0
+      for i:=0; i<10; i = i + 1 {
+        x = x + 1
+      }
+      i
+    `;
     const wrapper = () => compile_and_run(program1);
     expect(wrapper).toThrow(TypeError);
   });
@@ -94,60 +106,73 @@ describe("variables declared by the init statement should not be accessible outs
 describe("breaks should work", () => {
   test("Nesting break in if", () => {
     const result = compile_and_run(`
-            x := 0;
-            for i :=0; i<5; i = i + 1 {
-                if (i == 3) {
-                    break;
-                }
-                x = x + 1;
-            }
-            x;
-        `);
-    expect(result[0]).toStrictEqual([[], 3]);
+      x := 0
+      for i :=0; i<5; i = i + 1 {
+        if (i == 3) {
+          break
+        }
+        x = x + 1
+      }
+      x
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(3);
   });
 });
 
 describe("continue should work", () => {
   test("Nesting continue in if", () => {
     const result = compile_and_run(`
-            x := 0;
-            for i :=0; i<5; i = i + 1 {
-                if (i <= 3) {
-                    continue;
-                }
-                x = x + 1;
-            }
-            x;
-        `);
-    expect(result[0]).toStrictEqual([[], 1]);
+      x := 0
+      for i :=0; i<5; i = i + 1 {
+        if (i <= 3) {
+          continue
+        }
+        x = x + 1
+      }
+      x
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(1);
   });
 });
 
 describe("Infinite loops should work", () => {
   test("for loops with no init, condition or post are infinite loops which must be stopped by break", () => {
     const result = compile_and_run(`
-            x := 0;
-            for  {
-                x = x + 1;
-                if (x == 10) {
-                    break;
-                }
-            }
-            x;
-        `);
-    expect(result[0]).toStrictEqual([[], 10]);
+      x := 0
+      for {
+        x = x + 1
+        if (x == 10) {
+          break
+        }
+      }
+      x
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(10);
   });
+
   test("for loops with no condition is an infinite loop which must be stopped by break", () => {
     const result = compile_and_run(`
-            x := 0;
-            for y := 0; ; y = y + 1 {
-                x = x + 2;
-                if (y == 9) {
-                    break;
-                }
-            }
-            x;
-        `);
-    expect(result[0]).toStrictEqual([[], 20]);
+      x := 0
+      for y := 0; ; y = y + 1 {
+        x = x + 2
+        if (y == 9) {
+          break
+        }
+      }
+      x
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(20);
   });
 });
