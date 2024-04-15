@@ -14,6 +14,7 @@ import { MUTEX_CONSTANTS } from "./added_builtins";
 
 type MachineState =
   | { state: "default" }
+  | { state: "errored"; error: unknown }
   | { state: "finished" }
   | { state: "failed_lock" }
   | { state: "failed_wait" }
@@ -437,7 +438,7 @@ export class Machine {
   }
 
   is_finished() {
-    return this.state.state === "finished";
+    return this.state.state === "finished" || this.state.state === "errored";
   }
 
   is_blocked() {
@@ -460,72 +461,77 @@ export class Machine {
       instructions_ran < num_instructions &&
       this.instrs[this.PC].tag !== "DONE"
     ) {
-      const instr = this.instrs[this.PC++];
-      const result = (
-        microcode[instr.tag] as (
-          machine: Machine,
-          heap: Heap,
-          instr: Instruction,
-        ) => void | MicrocodeFunctionResult
-      )(this, this.heap, instr);
-      instructions_ran++;
+      try {
+        const instr = this.instrs[this.PC++];
+        const result = (
+          microcode[instr.tag] as (
+            machine: Machine,
+            heap: Heap,
+            instr: Instruction,
+          ) => void | MicrocodeFunctionResult
+        )(this, this.heap, instr);
+        instructions_ran++;
 
-      // Workaround since TS narrows `this.state` to exclude `blocked_send/receive` after
-      // the check above, but they could be modified by the microcode functions.
-      const current_state: MachineState = this.state as MachineState;
+        // Workaround since TS narrows `this.state` to exclude `blocked_send/receive` after
+        // the check above, but they could be modified by the microcode functions.
+        const current_state: MachineState = this.state as MachineState;
 
-      if (current_state.state === "failed_lock") {
-        this.state = { state: "default" };
-        //Hack, to use a more sensible way of doing this.
-        while (true) {
-          this.PC -= 1;
-          const instr = this.instrs[this.PC];
-          if (instr.tag === "LD" && instr.sym === "Lock") {
-            break;
+        if (current_state.state === "failed_lock") {
+          this.state = { state: "default" };
+          //Hack, to use a more sensible way of doing this.
+          while (true) {
+            this.PC -= 1;
+            const instr = this.instrs[this.PC];
+            if (instr.tag === "LD" && instr.sym === "Lock") {
+              break;
+            }
+            if (this.PC == 0) {
+              throw Error(
+                "Failed to find LD Lock after Failed Lock Signal triggered",
+              );
+            }
           }
-          if (this.PC == 0) {
-            throw Error(
-              "Failed to find LD Lock after Failed Lock Signal triggered",
-            );
+          return { state: this.state, instructions_ran };
+        } else if (current_state.state === "failed_wait") {
+          this.state = { state: "default" };
+          while (true) {
+            this.PC -= 1;
+            const instr = this.instrs[this.PC];
+            if (instr.tag === "LD" && instr.sym === "Wait") {
+              break;
+            }
+            if (this.PC == 0) {
+              throw new Error(
+                "Failed to find LD Wait after Failed Wait Signal triggered",
+              );
+            }
           }
+          //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
+          return { state: this.state, instructions_ran };
+        } else if (
+          current_state.state === "blocked_send" ||
+          current_state.state === "blocked_receive"
+        ) {
+          return { state: this.state, instructions_ran };
         }
-        return { state: this.state, instructions_ran };
-      } else if (current_state.state === "failed_wait") {
-        this.state = { state: "default" };
-        while (true) {
-          this.PC -= 1;
-          const instr = this.instrs[this.PC];
-          if (instr.tag === "LD" && instr.sym === "Wait") {
-            break;
-          }
-          if (this.PC == 0) {
-            throw new Error(
-              "Failed to find LD Wait after Failed Wait Signal triggered",
-            );
-          }
+        // TODO: spawning go machines doesn't need to trigger breaking out of loop
+        else if (
+          typeof result === "object" &&
+          result != null &&
+          "type" in result &&
+          "value" in result &&
+          result.type === "new_machine" &&
+          result.value instanceof Machine
+        ) {
+          return {
+            state: this.state,
+            new_machine: result.value,
+            instructions_ran,
+          };
         }
-        //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
+      } catch (error) {
+        this.state = { state: "errored", error };
         return { state: this.state, instructions_ran };
-      } else if (
-        current_state.state === "blocked_send" ||
-        current_state.state === "blocked_receive"
-      ) {
-        return { state: this.state, instructions_ran };
-      }
-      // TODO: spawning go machines doesn't need to trigger breaking out of loop
-      else if (
-        typeof result === "object" &&
-        result != null &&
-        "type" in result &&
-        "value" in result &&
-        result.type === "new_machine" &&
-        result.value instanceof Machine
-      ) {
-        return {
-          state: this.state,
-          new_machine: result.value,
-          instructions_ran,
-        };
       }
     }
 
