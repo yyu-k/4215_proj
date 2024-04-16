@@ -3,24 +3,23 @@ import { compile_program } from "./compiler";
 import { run } from "./scheduler";
 
 const program_str = `
-      func wait_for_program(done, chan) {
-        chan <- 1
-        chan <- 1
-        done <- 1
+    func fact(n) {
+      return fact_iter(n, 1, 1);
+    }
+    func fact_iter(n, i, acc) {
+      if (i > n) {
+          return acc;
+      } else {
+          return fact_iter(n, i + 1, acc * i);
       }
-      chan, done := Channel(2), Channel(0)
-      sum := 0
-      go wait_for_program(done, chan)
-      sum = sum + <-chan
-      sum = sum + <-chan
-      <-done
-      sum
+    }
+    fact(5);
 `;
 const ast = parser.parse(program_str);
 console.log(JSON.stringify(ast.body.stmts, null, 2));
 const instructions = compile_program(ast);
 console.log(JSON.stringify(instructions, null, 2));
-const machines = run(instructions, 50000, 2);
+const machines = run(instructions, 2300, 2);
 
 machines.forEach((machine) => {
   const { state, output, final_value } = machine;

@@ -236,8 +236,7 @@ LoopStatement "loops"
   = WhileStatement
 
 SimpleStatement "simple statement"
-    = NameDeclaration
-    / AssignmentStatement
+    = DeclareAssignStmt
     / Expression
 
 WhileStatement "while statement" //while is not used in Golang
@@ -320,7 +319,7 @@ ConstantDeclaration "const declaration"
     }
 
 VariableDeclaration "var declaration"
-    = VarToken __ symbol:Identifier __ type:Identifier? __ Assmt __ expression:Expression   {
+    = VarToken __ symbol:Identifier __ type:BasicType? __ Assmt __ expression:Expression   {
         return {
             tag: "var",
             sym: symbol,
