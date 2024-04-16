@@ -73,3 +73,17 @@ describe("assignment expressions", () => {
     expect(result[0].final_value).toStrictEqual(3);
   });
 });
+
+describe("multiple array assignments", () => {
+  test("multiple array assignments", () => {
+    const program = `
+      x := [10]{}
+      x[0], x[1], x[2] = 9, 12, 15
+      x[1] + x[2] - x[0]
+    `;
+    const result = compile_and_run(program);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].final_value).toStrictEqual(18);
+  });
+});

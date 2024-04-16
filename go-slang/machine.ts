@@ -261,6 +261,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       );
     }
     heap.set_Slice_element(slice_address, slice_index, value);
+    push(machine.OS, heap.values.null);
   },
   SLICE_GET_ELEMENT: (machine, heap, _instr) => {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
