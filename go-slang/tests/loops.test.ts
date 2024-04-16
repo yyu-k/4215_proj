@@ -1,13 +1,4 @@
-import { parser } from "../parser/parser";
-import { compile_program } from "../compiler";
-import { run } from "../scheduler";
-
-const heap_size = 50000;
-const compile_and_run = (program_str: string) => {
-  const ast = parser.parse(program_str);
-  const instructions = compile_program(ast);
-  return run(instructions, heap_size);
-};
+import { compile_and_run } from "./utils";
 
 describe("for loops with init statement, condition, and post statement should work", () => {
   test("adding a number every loop", () => {

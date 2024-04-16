@@ -1,13 +1,4 @@
-import { parser } from "../parser/parser";
-import { compile_program } from "../compiler";
-import { run } from "../scheduler";
-
-const heap_size = 50000;
-const compile_and_run = (program_str: string, time_slice: number = 5) => {
-  const ast = parser.parse(program_str);
-  const instructions = compile_program(ast);
-  return run(instructions, heap_size, time_slice);
-};
+import { compile_and_run } from "./utils";
 
 describe("Unbuffered channels", () => {
   test("Errors when blocking on send without receive", () => {
@@ -15,7 +6,7 @@ describe("Unbuffered channels", () => {
       chan := Channel(0)
       chan <- 1
     `;
-    expect(() => compile_and_run(program)).toThrow(
+    expect(() => compile_and_run(program, 5)).toThrow(
       "Blocked on a send without any matching receive",
     );
   });
@@ -25,13 +16,13 @@ describe("Unbuffered channels", () => {
       chan := Channel(0)
       <- chan
     `;
-    expect(() => compile_and_run(program)).toThrow(
+    expect(() => compile_and_run(program, 5)).toThrow(
       "Blocked on a receive without any matching send",
     );
   });
 
   test("Can be used to wait for a program", () => {
-    const result = compile_and_run(`
+    const program = `
       func wait_for_program(chan) {
         chan <- 1
         return 1
@@ -41,7 +32,8 @@ describe("Unbuffered channels", () => {
       a := <-chan
       display(a)
       2
-    `);
+    `;
+    const result = compile_and_run(program, 5);
     expect(result).toHaveLength(2);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([1]);
@@ -58,7 +50,7 @@ describe("Buffered channels", () => {
       chan := Channel(1)
       chan <- 1
     `;
-    const result = compile_and_run(program);
+    const result = compile_and_run(program, 5);
     expect(result).toHaveLength(1);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);
@@ -71,13 +63,13 @@ describe("Buffered channels", () => {
       chan <- 1
       chan <- 1
     `;
-    expect(() => compile_and_run(program)).toThrow(
+    expect(() => compile_and_run(program, 5)).toThrow(
       "Blocked on a send without any matching receive",
     );
   });
 
   test("Can send values across goroutines", () => {
-    const result = compile_and_run(`
+    const program = `
       func wait_for_program(done, chan) {
         chan <- 1
         chan <- 1
@@ -90,7 +82,8 @@ describe("Buffered channels", () => {
       sum = sum + <-chan
       <-done
       sum
-    `);
+    `;
+    const result = compile_and_run(program, 5);
     expect(result).toHaveLength(2);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);

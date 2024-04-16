@@ -1,13 +1,4 @@
-import { parser } from "../parser/parser";
-import { compile_program } from "../compiler";
-import { run } from "../scheduler";
-
-const heap_size = 50000;
-const compile_and_run = (program_str: string) => {
-  const ast = parser.parse(program_str);
-  const instructions = compile_program(ast);
-  return run(instructions, heap_size);
-};
+import { compile_and_run } from "./utils";
 
 describe("goroutines", () => {
   test("builtin functions called as goroutines should execute immediately", () => {
@@ -27,17 +18,19 @@ describe("goroutines", () => {
 
   // TODO: should we be able to call functions before they are defined?
   test("main machine should end before other machines without synchronization", () => {
-    const result = compile_and_run(`
+    const program = `
       func add(a, b) {
         return a + b;
       }
       go add(1, 2)
       add(10, 15)
-    `);
+    `;
+    const result = compile_and_run(program, 1);
     expect(result).toHaveLength(2);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(25);
+    // TODO: fix bug, second machine doesn't need to be executed
     expect(result[1].state.state).toStrictEqual("default");
     expect(result[1].output).toStrictEqual([]);
     expect(result[1].final_value).toStrictEqual(null);

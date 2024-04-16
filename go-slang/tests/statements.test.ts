@@ -1,13 +1,5 @@
-import { parser } from "../parser/parser";
-import { compile_program } from "../compiler";
-import { run } from "../scheduler";
-
-const heap_size = 50000;
-const compile_and_run = (program_str: string) => {
-  const ast = parser.parse(program_str);
-  const instructions = compile_program(ast);
-  return run(instructions, heap_size);
-};
+import { compile_and_run } from "./utils";
+import { parse } from "../index";
 
 describe("program", () => {
   test("should be executable without a block", () => {
@@ -67,7 +59,7 @@ describe("statements", () => {
       a := 1 b := 2
       a + b
     `;
-    expect(() => parser.parse(program)).toThrow();
+    expect(() => parse(program)).toThrow();
   });
 
   test("do not error when multiple statements are on the same line with semicolons", () => {

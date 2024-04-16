@@ -1,12 +1,6 @@
-import { parser } from "../parser/parser";
-import { compile_program } from "../compiler";
-import { run } from "../scheduler";
+import { compile_and_run } from "./utils";
 
-const compile_and_run = (program_str: string, heap_size : number, gc_flag : boolean) => {
-  const ast = parser.parse(program_str);
-  const instructions = compile_program(ast);
-  return run(instructions, heap_size, 100, gc_flag);
-};
+const DEFAULT_TIME_SLICE = 100;
 
 describe("Garbage Collector should work", () => {
   test("Program will work if heap size is set to 2300 and gc_flag is set to true", () => {
@@ -23,7 +17,7 @@ describe("Garbage Collector should work", () => {
       }
       fact(5);
     `;
-    const result = compile_and_run(program, 2300, true);
+    const result = compile_and_run(program, DEFAULT_TIME_SLICE, 2300, true);
     expect(result).toHaveLength(1);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);
@@ -43,7 +37,7 @@ describe("Garbage Collector should work", () => {
       }
       fact(5);
     `;
-    const result = compile_and_run(program, 2300, false);
+    const result = compile_and_run(program, DEFAULT_TIME_SLICE, 2300, false);
     expect(result[0].state.state).toStrictEqual("errored");
   });
-})
+});

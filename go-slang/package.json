@@ -1,25 +1,22 @@
 {
   "name": "go-slang",
   "version": "0.0.0",
-  "description": "",
-  "main": "parser.js",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "debug": "node debug.js",
+    "build": "npm run generate-parser && tsc",
     "format": "prettier --write .",
+    "generate-parser": "peggy parser/grammar.pegjs -o parser/parser.js --format es",
     "test": "jest"
   },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
+  "devDependencies": {
     "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.25",
     "jest": "^29.7.0",
     "peggy": "^4.0.2",
+    "prettier": "^3.2.5",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.25",
-    "prettier": "^3.2.5"
   }
 }

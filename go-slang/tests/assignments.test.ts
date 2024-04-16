@@ -1,13 +1,4 @@
-import { parser } from "../parser/parser";
-import { compile_program } from "../compiler";
-import { run } from "../scheduler";
-
-const heap_size = 50000;
-const compile_and_run = (program_str: string) => {
-  const ast = parser.parse(program_str);
-  const instructions = compile_program(ast);
-  return run(instructions, heap_size);
-};
+import { compile_and_run } from "./utils";
 
 describe("short assignments", () => {
   test("single variables", () => {
@@ -86,6 +77,7 @@ describe("multiple array assignments", () => {
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].final_value).toStrictEqual(18);
   });
+
   test("mixed array and variable assignments", () => {
     const program = `
       x := [10]{}
