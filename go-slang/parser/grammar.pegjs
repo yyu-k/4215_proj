@@ -205,7 +205,6 @@ Statement "statement"
 
 FunctionStatement "function statement" 
   = FunctionDeclaration 
-  / MethodDeclaration
 
 FunctionDeclaration "function declaration"
   = FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
@@ -213,16 +212,6 @@ FunctionDeclaration "function declaration"
             tag: "fun",
             sym: symbol,
             prms: params.map(x => x.sym),
-            body,
-        }
-    }
-
-MethodDeclaration "method declaration"
-  = FunctionToken __ "(" __ receiver:Identifier __ ")" __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
-        return {
-            tag: "fun",
-            sym: symbol,
-            prms: [receiver].concat(params.map(x => x.sym)),
             body,
         }
     }
@@ -432,7 +421,6 @@ UnaryExpression
 
 CallExpression
     = FunctionCall
-    / MethodCall
     / SliceExpression
     / IndexAccessExpression
     / PrimaryExpression
@@ -440,11 +428,6 @@ CallExpression
 FunctionCall
   = fn:PrimaryExpression __ args:Arguments {
         return { tag: "app", fun: fn, args: args }
-    }
-
-MethodCall
-  = obj:NameExpression DOT fn:PrimaryExpression __ args:Arguments {
-        return { tag: "app", fun: fn, args: [obj].concat(args) }
     }
 
 SliceExpression "slice expression"

@@ -74,19 +74,3 @@ describe("It should be possible to return from a loop", () => {
     expect(result[0].final_value).toStrictEqual(105);
   });
 });
-
-describe("methods should be definable", () => {
-  test("func (i) add(a) {return i + a;} d:=10; d.add(15) should give 25", () => {
-    const result = compile_and_run(`
-      func (i) add(a) {
-        return i + a;
-      }
-      d := 10;
-      d.add(15);
-    `);
-    expect(result).toHaveLength(1);
-    expect(result[0].state.state).toStrictEqual("finished");
-    expect(result[0].output).toStrictEqual([]);
-    expect(result[0].final_value).toStrictEqual(25);
-  });
-});
