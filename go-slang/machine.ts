@@ -143,6 +143,8 @@ export type Instruction =
   | { tag: "RECEIVE" }
   | { tag: "GO"; arity: number }
   | { tag: "ASSIGN"; pos: Position }
+  | { tag: "SLICE_CREATE" ; init_size : number}
+  | { tag: "CUT_SLICE"; }
   | { tag: "SLICE_SET_ELEMENT" }
   | { tag: "SLICE_GET_ELEMENT" }
   | { tag: "LDF"; arity: number; addr: number }
@@ -171,6 +173,30 @@ type MachineRunResult = {
   state: MachineState;
   new_machine?: Machine | undefined;
   instructions_ran: number;
+};
+
+//array related helper functions
+const make_array = (
+  //this function expects the array size to be on top of the OS stack, followed by the initial assignments
+  machine : Machine,
+  heap : Heap,
+  initial_assingment_size : number,
+): [number, number] => {
+  const size = heap.address_to_JS_value(machine.OS.pop()!);
+  if (initial_assingment_size > size) {
+    throw new Error(
+      "Attempt to assign more values to array than the array size",
+    );
+  }
+  const array_address = heap.allocate_Array(size);
+  for (let i = 0; i < initial_assingment_size; i++) {
+    heap.set_Array_element(
+      array_address!,
+      initial_assingment_size - i - 1,
+      machine.OS.pop()!,
+    );
+  }
+  return [array_address, size];
 };
 
 const microcode: MicrocodeFunctions<Instruction> = {
@@ -251,6 +277,58 @@ const microcode: MicrocodeFunctions<Instruction> = {
   },
   ASSIGN: (machine, heap, instr) =>
     heap.set_Environment_value(machine.E, instr.pos, peek(machine.OS, 0)),
+  SLICE_CREATE: (machine, heap, instr) => {
+    const [array_addresss, size] = make_array(
+      machine,
+      heap,
+      instr.init_size
+    );
+    const slice_address = heap.allocate_Slice(array_addresss, 0, size);
+    machine.OS.push(slice_address)
+  }, 
+  CUT_SLICE : (machine, heap, instr) => {
+    let new_max_index = heap.address_to_JS_value(machine.OS.pop()!);
+    let new_end_index = heap.address_to_JS_value(machine.OS.pop()!);
+    let new_start_index = heap.address_to_JS_value(machine.OS.pop()!);
+    const old_slice = machine.OS.pop()!;
+    if (!heap.is_Slice(old_slice)) {
+      throw new Error("Attempt to cut an object which is not a Slice");
+    }
+    //The default is zero for the low bound and the length of the slice for the high bound.
+    if (new_start_index === null) {
+      new_start_index = 0;
+    }
+    if (new_start_index < 0) {
+      throw new Error("Attempt to slice with a <0 starting index");
+    }
+    const old_start_index = heap.get_Slice_start_index(old_slice);
+    const old_capacity = heap.get_Slice_capacity(old_slice);
+    const array_address = heap.get_Slice_array_address(old_slice);
+    const array_size = heap.get_Array_size(array_address);
+    //if old is 2 and new is 1, then new is now 3
+    new_start_index = old_start_index + new_start_index;
+    if (new_end_index === null) {
+      //if end is not defined, take the maximum possible, which is the end of the old slice
+      new_end_index = heap.get_Slice_end_index(old_slice);
+    } else {
+      //if end index is 5 and old start is 3, new end is now 8
+      new_end_index = old_start_index + new_end_index;
+    }
+    if (new_end_index > array_size) {
+      throw new Error(
+        "Attempt to cut a slice beyond the original slice's limit",
+      );
+    }
+    if (new_end_index - new_start_index > old_capacity) {
+      throw new Error("Capacity of slice exceeded based on index");
+    }
+    const new_slice = heap.allocate_Slice(
+      array_address,
+      new_start_index,
+      new_end_index,
+    );
+    machine.OS.push(new_slice)
+  },
   SLICE_SET_ELEMENT: (machine, heap, _instr) => {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
     const slice_address = machine.OS.pop()!;
