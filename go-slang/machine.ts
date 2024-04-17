@@ -328,14 +328,13 @@ const microcode: MicrocodeFunctions<Instruction> = {
   SLICE_SET_ELEMENT: (machine, heap, _instr) => {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
     const slice_address = machine.OS.pop()!;
-    const value = machine.OS.pop()!;
+    const value = peek(machine.OS, 0);
     if (!heap.is_Slice(slice_address)) {
       throw new Error(
         "Attempt to set slice element of an object which is not a slice",
       );
     }
     heap.set_Slice_element(slice_address, slice_index, value);
-    push(machine.OS, heap.values.null);
   },
   SLICE_GET_ELEMENT: (machine, heap, _instr) => {
     const slice_index = heap.address_to_JS_value(machine.OS.pop()!);
