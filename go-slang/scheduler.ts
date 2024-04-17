@@ -8,9 +8,15 @@ export function run(
   instrs: Instruction[],
   heap_size: number,
   timeslice: number = DEFAULT_TIMESLICE,
-  gc_flag : boolean = true
+  gc_flag: boolean = true,
 ) {
-  const heap = new Heap(heap_size, builtins, added_builtins, constants, gc_flag);
+  const heap = new Heap(
+    heap_size,
+    builtins,
+    added_builtins,
+    constants,
+    gc_flag,
+  );
   const machines: Machine[] = [];
   const machine = new Machine(instrs, heap);
   machines.push(machine);

@@ -331,13 +331,15 @@ const compile_comp = {
     //compile the size of the array
     compile(comp.size, ce);
     //Add machine instruction
-    instrs[wc++] = {tag : "SLICE_CREATE", init_size : comp.initial.length}
+    instrs[wc++] = { tag: "SLICE_CREATE", init_size: comp.initial.length };
   },
   slice_create: (comp, ce) => {
     //push the address of the array reflected by the expression onto the OS
     //Then, push low, high, max onto the OS, max on top.
-    [comp.array, comp.low, comp.high, comp.max].forEach(comp => compile(comp, ce))
-    instrs[wc++] = {tag : "CUT_SLICE"};
+    [comp.array, comp.low, comp.high, comp.max].forEach((comp) =>
+      compile(comp, ce),
+    );
+    instrs[wc++] = { tag: "CUT_SLICE" };
   },
   index_get: (comp, ce) => {
     compile(comp.source, ce);

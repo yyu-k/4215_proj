@@ -77,7 +77,7 @@ export class Heap {
   stringPool: Record<number, [number, string]> = {};
 
   // whether garbage collector is used
-  gc_flag : boolean;
+  gc_flag: boolean;
 
   // allocates a heap of given size (in bytes) and returns a DataView of that
   constructor(
@@ -85,14 +85,14 @@ export class Heap {
     builtins: Builtins,
     added_builtins: Builtins,
     constants: Constants,
-    gc_flag : boolean
+    gc_flag: boolean,
   ) {
     const data = new ArrayBuffer(words * WORD_SIZE);
     this.data = new DataView(data);
     if (gc_flag !== undefined) {
-      this.gc_flag = gc_flag
+      this.gc_flag = gc_flag;
     } else {
-      this.gc_flag = true; 
+      this.gc_flag = true;
     }
 
     this.size = words;
@@ -108,7 +108,7 @@ export class Heap {
     this.set(i - NODE_SIZE, -1);
     this.free = 0;
     this.bottom = this.free;
-    
+
     this.values = {};
     this.values.False = this.allocate(False_tag, 1);
     this.values.True = this.allocate(True_tag, 1);
@@ -170,11 +170,11 @@ export class Heap {
       throw new Error("limitation: nodes cannot be larger than 10 words");
     }
     // a value of -1 in free indicates the end of the free list
-    if (this.free === -1 ) {
+    if (this.free === -1) {
       if (this.gc_flag) {
         this.mark_sweep();
       } else {
-        throw new Error("Out of memory and garbage collector turned off")
+        throw new Error("Out of memory and garbage collector turned off");
       }
     }
     const address = this.free;
@@ -274,7 +274,7 @@ export class Heap {
     //         heap.Environment_console.log(heap.get_Blockframe_environment(address))
     //     }
     // })
-    const mark_alias = (address) => this.mark(address)
+    const mark_alias = (address) => this.mark(address);
     ROOTS.forEach(mark_alias);
     this.sweep();
     if (this.free === -1) {
