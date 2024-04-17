@@ -91,7 +91,7 @@
       this.type = type
     }
   }
-  
+
   class AppComp extends Component {
     //fun is a NameComp representing the function, args is an array of expression components e.g. Literals
     constructor (fun, args) {
@@ -184,7 +184,7 @@ Sequence "list of statements"
         }
     }
 
-Block "block" 
+Block "block"
     = "{" seq:Sequence? "}" {
         return { tag: "blk", body: seq }
     }
@@ -203,8 +203,8 @@ Statement "statement"
     // Allow empty statements
     / ";" __ { return null }
 
-FunctionStatement "function statement" 
-  = FunctionDeclaration 
+FunctionStatement "function statement"
+  = FunctionDeclaration
 
 FunctionDeclaration "function declaration"
   = FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
@@ -230,10 +230,10 @@ SimpleStatement "simple statement"
 
 WhileStatement "while statement" //while is not used in Golang
   = ForToken __
-      init:SimpleStatement? __ SEMICOLON __ 
+      init:SimpleStatement? __ SEMICOLON __
       pred:Expression? __ SEMICOLON __
       post:SimpleStatement? __
-    body:Block 
+    body:Block
     {
       let while_object;
       //If there is no predicate, the predicate is true (infinite loop)
@@ -245,14 +245,14 @@ WhileStatement "while statement" //while is not used in Golang
       }
       //the post statement is to be executed at the end of the loop, if it is executed
       if (post) {
-        while_object.post = post; 
+        while_object.post = post;
       }
       //the init is executed once before evaluating the condition
       if (init) {
         while_object.init = init
       }
       return while_object;
-    }      
+    }
   / ForToken __ pred:Expression __ body:Block {
       return new WhileComp(pred, body);
     }
@@ -260,7 +260,7 @@ WhileStatement "while statement" //while is not used in Golang
       return new WhileComp(new LitComp(true), body);
     }
 
-LoopControlStatement 
+LoopControlStatement
   = BreakStatement
   / ContStatement
 
@@ -278,9 +278,9 @@ IfStatement
       return main;
     }
 
-IfBlock 
+IfBlock
     = IfToken __ stmt:(@SimpleStatement __ SEMICOLON __)?
-    __ pred:Expression __ cons:Block 
+    __ pred:Expression __ cons:Block
       {
         const cond = new CondComp(pred, cons, new BlockComp([]));
         if (stmt === undefined) {
@@ -317,8 +317,8 @@ VariableDeclaration "var declaration"
         }
     }
     / VarToken __ symbol:Identifier __ type:ArrayType {
-        return new VarComp(symbol, 
-                          new ArrayCreateComp(type.size), 
+        return new VarComp(symbol,
+                          new ArrayCreateComp(type.size),
                           "array")
     }
     / VarToken __ symbol:Identifier __ type:BasicType {
@@ -358,7 +358,10 @@ LeftHandSideExpression
     / NameExpression
 
 GoStatement "go statement"
-    = "go" __ call:CallExpression {
+    = "go" __ call:ComplexExpression {
+        if (call.tag !== "app") {
+          throw new Error("go statement must end with a function call")
+        }
         return {
             tag: "go",
             fun: call.fun,
@@ -385,10 +388,6 @@ ChannelReadExpression "channel read expression"
 
 Expression
     = BinaryExpression
-    / UnaryExpression
-    / ChannelReadExpression
-    / CallExpression
-    / PrimaryExpression 
 
 BinaryExpression
   = head:AdditiveExpression
@@ -410,33 +409,35 @@ MultiplicativeExpression
   / UnaryExpression
 
 UnaryExpression
-    = op:UnaryOperator __ e:UnaryExpression {
+    = ChannelReadExpression
+    / op:UnaryOperator __ e:UnaryExpression {
         return {
             tag: "unop",
             sym: op,
             expr: e
         }
     }
-    / CallExpression
-
-CallExpression
-    = FunctionCall
-    / SliceExpression
-    / IndexAccessExpression
+    / ComplexExpression
     / PrimaryExpression
 
-FunctionCall
-  = fn:PrimaryExpression __ args:Arguments {
-        return { tag: "app", fun: fn, args: args }
+ComplexExpression
+    = expression:PrimaryExpression __
+      suffixes:(
+        args:Arguments { return { type: "function_call", args } }
+        / slice:Slice { return { type: "slice", slice } }
+        / index:Index { return { type: "index", index } }
+      )|1.., __| {
+      return suffixes.reduce(function(expression, suffix) {
+        switch (suffix.type) {
+          case "function_call":
+            return { tag: "app", fun: expression, args: suffix.args };
+          case "slice":
+            return new SliceCreateComp(expression, suffix.slice.low, suffix.slice.high, suffix.slice.max);
+          case "index":
+            return new IndexGetComp(expression, suffix.index);
+        }
+      }, expression);
     }
-
-SliceExpression "slice expression"
-  = array:PrimaryExpression __ slice:Slice {
-    return new SliceCreateComp(array, slice.low, slice.high, slice.max)
-  }
-
-IndexAccessExpression "index access"
-  = p:PrimaryExpression __ i:Index {return new IndexGetComp(p, i)}
 
 Slice "slice"
   = "[" __ low:Expression? __ COLON __ high:Expression? __ "]" {
@@ -466,7 +467,6 @@ PrimaryExpression
     = Literal
     / NameExpression
     / "(" __ @Expression __ ")"
-    / ChannelReadExpression
 
 NameExpression
   = ident:Identifier { return { tag: "nam", sym: ident } }
@@ -553,11 +553,11 @@ SignedInteger
 HexDigit
   = [0-9a-f]i
 
-letter            "letter"                      
+letter            "letter"
   = [a-zA-ZáàâäãåçéèêëíìîïñóòôöõúùûüýÿæœÁÀÂÄÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸÆŒ]
   / "_"
 
-//Simplified IdentifierPart 
+//Simplified IdentifierPart
 IdentifierPart
   = IdentifierStart
   / letter
@@ -567,7 +567,7 @@ IdentifierPart
 IdentifierStart
   = "$"
   / "_"
-  / "\\"      
+  / "\\"
 
 // Tokens
 
@@ -628,11 +628,11 @@ COLON
   = ":"
 
 //Quotes
-DQUO              "double quote"                
+DQUO              "double quote"
   = "\u0022"        // ""
-SQUO              "single quote"                
+SQUO              "single quote"
   = "\u0027"        // ''
-BQUO              "back quote/grave accent"     
+BQUO              "back quote/grave accent"
   = "\u0060"        // ``
 
 LineTerminator
@@ -643,7 +643,7 @@ LineTerminatorSequence "end of line"
   / "\r\n"
   / "\r"
   / "\u2028"
-  / "\u2029" 
+  / "\u2029"
 
 __
   = (WhiteSpace / LineTerminatorSequence)* { return null }
@@ -672,17 +672,17 @@ EOF "end of file"
 
 //Binary Operators
 
-mul_op          "multiplication operator"       
+mul_op          "multiplication operator"
   = "*"
   / "/"
   / "%"
 
-add_op          "addition operator"             
+add_op          "addition operator"
   = $("+" ![+=])
   / $("-" ![-=])
 
-rel_op          "comparison operator"           
-  = "=="           
+rel_op          "comparison operator"
+  = "=="
   / "!="
   / "<="
   / ">="
@@ -692,7 +692,7 @@ rel_op          "comparison operator"
 Assmt
   = "=" !"="
 
-ShortAssmt      
+ShortAssmt
   = ":="
 
 UnaryOperator

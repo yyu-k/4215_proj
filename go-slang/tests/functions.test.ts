@@ -73,4 +73,23 @@ describe("It should be possible to return from a loop", () => {
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(105);
   });
+
+  test("Can be returned and called", () => {
+    const result = compile_and_run(`
+      func add(a) {
+        func add2(b) {
+          func add3(c) {
+            return a + b + c
+          }
+          return add3
+        }
+        return add2
+      }
+      add(30)(40)(35)
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(105);
+  });
 });
