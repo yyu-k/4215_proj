@@ -1,13 +1,13 @@
-import { useRef, useState } from "react";
-import { parse, compile_program, run } from "go-slang";
-import { Editor, OnMount } from "@monaco-editor/react";
+import { useEffect, useRef, useState } from "react";
+import { parse, compile_program, run, Instruction } from "go-slang";
+import { Editor, OnChange, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
 import "./App.css";
+import { Tab, Tabs } from "./Tabs";
+import { getErrorDescription } from "./utils";
 
 type Editor = monaco.editor.IStandaloneCodeEditor;
-// TODO: expose from `go-slang`
-type Instructions = ReturnType<typeof compile_program>;
 type Machines = ReturnType<typeof run>;
 
 type EditorState =
@@ -15,19 +15,23 @@ type EditorState =
       state: "empty";
     }
   | {
-      state: "compile-error";
+      state: "parse-error";
       error: string;
-      oldInstructions: Instructions;
-      oldMachines: Machines;
+    }
+  | {
+      state: "compile-error";
+      ast: unknown;
+      error: string;
     }
   | {
       state: "compiled";
-      instructions: Instructions;
-      oldMachines: Machines;
+      ast: unknown;
+      instructions: Instruction[];
     }
   | {
       state: "finished";
-      instructions: Instructions;
+      ast: unknown;
+      instructions: Instruction[];
       machines: Machines;
     };
 
@@ -38,115 +42,253 @@ function App() {
   });
 
   const handleEditorDidMount: OnMount = (editor) => {
+    try {
+      const previousProgram = window.localStorage.getItem("program") ?? "";
+      if (previousProgram) {
+        editor.setValue(previousProgram);
+      }
+    } catch (e) {
+      // no-op
+    }
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, () =>
+      compileProgram(),
+    );
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
+      compileProgram(true),
+    );
     editorRef.current = editor;
   };
+  const handleEditorDidChange: OnChange = (value) => {
+    window.localStorage.setItem("program", value ?? "");
+  };
 
-  function compileProgram() {
+  function compileProgram(runProgram: boolean = false) {
+    const programText = editorRef.current!.getValue();
     try {
-      const programText = editorRef.current!.getValue();
       const ast = parse(programText, {});
-      const instructions = compile_program(ast);
-      setEditorState({
-        state: "compiled",
-        instructions,
-        oldMachines:
-          editorState.state === "finished" ? editorState.machines : [],
-      });
+      try {
+        const instructions = compile_program(ast);
+        if (runProgram) {
+          const results = run(instructions, 50000);
+          setEditorState({
+            state: "finished",
+            ast,
+            instructions,
+            machines: results,
+          });
+        } else {
+          setEditorState({
+            state: "compiled",
+            ast,
+            instructions,
+          });
+        }
+      } catch (err) {
+        setEditorState({
+          state: "compile-error",
+          ast,
+          error: getErrorDescription(err),
+        });
+      }
     } catch (err) {
       setEditorState({
-        state: "compile-error",
-        error:
-          (err as { message: string }).message +
-          (typeof (err as { stack: string }).stack === "string"
-            ? "\n\n" + (err as { stack: string }).stack
-            : ""),
-        oldInstructions:
-          editorState.state === "compiled" || editorState.state === "finished"
-            ? editorState.instructions
-            : [],
-        oldMachines:
-          editorState.state === "finished" ? editorState.machines : [],
-      });
-    }
-  }
-
-  function runProgram() {
-    try {
-      const programText = editorRef.current!.getValue();
-      const ast = parse(programText, {});
-      const instructions = compile_program(ast);
-      const results = run(instructions, 50000);
-      setEditorState({
-        state: "finished",
-        instructions,
-        machines: results,
-      });
-    } catch (err) {
-      setEditorState({
-        state: "compile-error",
-        error:
-          (err as { message: string }).message +
-          (typeof (err as { stack: string }).stack === "string"
-            ? "\n\n" + (err as { stack: string }).stack
-            : ""),
-        oldInstructions:
-          editorState.state === "compiled" || editorState.state === "finished"
-            ? editorState.instructions
-            : [],
-        oldMachines:
-          editorState.state === "finished" ? editorState.machines : [],
+        state: "parse-error",
+        error: getErrorDescription(err),
       });
     }
   }
 
   return (
     <div className="grid">
-      <div>
-        <div>
-          <button onClick={runProgram}>Run</button>
-          <button onClick={compileProgram}>Compile</button>
-        </div>
+      <div className="row-1 column-1 header">
+        <h1>go-slang</h1>
+        <button onClick={() => compileProgram(true)}>Run</button>
+        <button onClick={() => compileProgram()}>Compile</button>
+      </div>
+      <div className="column-1">
         <Editor
-          height="90vh"
-          defaultLanguage="go"
+          language="go"
           defaultValue="a := 1"
+          options={{ minimap: { enabled: false } }}
           onMount={handleEditorDidMount}
+          onChange={handleEditorDidChange}
         />
       </div>
 
-      <div>
-        {editorState.state === "compile-error" && (
-          <div>
-            <h2>Compile error</h2>
-            <pre>
-              <code>{editorState.error}</code>
-            </pre>
-          </div>
-        )}
-        {(editorState.state === "compiled" ||
-          editorState.state === "finished") && (
-          <div>
-            <h2>Instructions</h2>
-            <pre>
-              <code>
-                {editorState.instructions
-                  .map((output) => JSON.stringify(output))
-                  .join("\n")}
-              </code>
-            </pre>
-          </div>
-        )}
+      <InstructionsPanel editorState={editorState} />
+
+      <MachinesPanel editorState={editorState} />
+    </div>
+  );
+}
+
+type InstructionsTab = "instructions" | "ast";
+
+function InstructionsPanel({ editorState }: { editorState: EditorState }) {
+  const [tab, setTab] = useState<InstructionsTab>("instructions");
+
+  useEffect(() => {
+    switch (editorState.state) {
+      case "empty":
+      case "compile-error":
+        setTab("instructions");
+        return;
+      case "parse-error":
+        setTab("ast");
+        return;
+      case "compiled":
+      case "finished":
+        // Persist tab since both tabs are available
+        return;
+    }
+  }, [editorState.state]);
+
+  return (
+    <>
+      <div className="row-1 column-2">
+        <Tabs<InstructionsTab> tab={tab} setTab={setTab}>
+          {(() => {
+            switch (editorState.state) {
+              case "empty":
+                return <Tab name="instructions">Instructions</Tab>;
+              case "parse-error":
+                return <Tab name="ast">Parse error</Tab>;
+              case "compile-error":
+                return (
+                  <>
+                    <Tab name="instructions">Compile error</Tab>
+                    <Tab name="ast">AST</Tab>
+                  </>
+                );
+              case "compiled":
+              case "finished":
+                return (
+                  <>
+                    <Tab name="instructions">Instructions</Tab>
+                    <Tab name="ast">AST</Tab>
+                  </>
+                );
+            }
+          })()}
+        </Tabs>
       </div>
 
-      <div>
-        {editorState.state === "finished" &&
-          editorState.machines.map((machine, i) => (
-            <section key={i}>
-              <h2>Machine {i + 1}</h2>
-              <h3>Machine state</h3>
-              <p>{machine.state.state}</p>
-              <h3>Output</h3>
-              {machine.output.length > 0 ? (
+      <div className="column-2">
+        {tab === "instructions" &&
+          (() => {
+            switch (editorState.state) {
+              case "empty":
+              case "parse-error":
+                return;
+              case "compile-error":
+                return (
+                  <Editor
+                    value={editorState.error}
+                    options={{ minimap: { enabled: false }, readOnly: true }}
+                  />
+                );
+              case "compiled":
+              case "finished":
+                return (
+                  <Editor
+                    value={editorState.instructions
+                      .map((output) => JSON.stringify(output))
+                      .join("\n")}
+                    options={{ minimap: { enabled: false }, readOnly: true }}
+                  />
+                );
+            }
+          })()}
+        {tab === "ast" &&
+          (() => {
+            switch (editorState.state) {
+              case "empty":
+                return;
+              case "parse-error":
+                return (
+                  <Editor
+                    value={editorState.error}
+                    options={{ minimap: { enabled: false }, readOnly: true }}
+                  />
+                );
+              case "compile-error":
+              case "compiled":
+              case "finished":
+                return (
+                  <Editor
+                    value={JSON.stringify(editorState.ast, null, 2)}
+                    options={{ minimap: { enabled: false }, readOnly: true }}
+                  />
+                );
+            }
+          })()}
+      </div>
+    </>
+  );
+}
+
+function MachinesPanel({ editorState }: { editorState: EditorState }) {
+  const [machineIndex, setMachineIndex] = useState(0);
+  const machine =
+    editorState.state === "finished"
+      ? editorState.machines[machineIndex]
+      : undefined;
+
+  useEffect(() => {
+    setMachineIndex(0);
+  }, [editorState.state]);
+
+  return (
+    <>
+      <div className="row-1 column-3">
+        <Tabs tab={machineIndex} setTab={setMachineIndex}>
+          {(() => {
+            switch (editorState.state) {
+              case "empty":
+              case "parse-error":
+              case "compile-error":
+              case "compiled":
+                return <Tab name={0}>Default Machine</Tab>;
+              case "finished":
+                return editorState.machines.map((_, i) => (
+                  <Tab name={i}>
+                    {i === 0 ? "Default Machine" : `Machine ${i}`}
+                  </Tab>
+                ));
+            }
+          })()}
+        </Tabs>
+      </div>
+
+      <div className="column-3">
+        {machine && (
+          <>
+            <p>
+              <strong>State:</strong> <code>{machine.state.state} </code>
+            </p>
+            {machine.state.state === "errored" && (
+              <p>
+                <strong>Error:</strong>{" "}
+                <pre>
+                  <code>{getErrorDescription(machine.state.error)}</code>
+                </pre>
+              </p>
+            )}
+            {machine.state.state === "finished" && (
+              <p>
+                <strong>Final value:</strong>{" "}
+                <code>
+                  {machine.final_value === undefined
+                    ? "undefined"
+                    : JSON.stringify(machine.final_value)}
+                </code>
+              </p>
+            )}
+            {machine.output.length > 0 && (
+              <>
+                <p>
+                  <strong>Logged output</strong>
+                </p>
                 <pre>
                   <code>
                     {machine.output
@@ -154,17 +296,12 @@ function App() {
                       .join("\n")}
                   </code>
                 </pre>
-              ) : (
-                <p>None</p>
-              )}
-              <h3>Final value</h3>
-              <pre>
-                <code>{JSON.stringify(machine.final_value)}</code>
-              </pre>
-            </section>
-          ))}
+              </>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </>
   );
 }
 
