@@ -1,1 +1,13 @@
+pre {
+  overflow-x: scroll;
+}
 
+.grid {
+  width: 100vw;
+  height: 100vh;
+
+  display: grid;
+  gap: 16px;
+  grid-template-rows: 24px 1fr;
+  grid-template-columns: repeat(3, 1fr);
+}
