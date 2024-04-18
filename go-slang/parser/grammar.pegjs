@@ -491,7 +491,7 @@ Identifier
 Literal
   = ArrayLiteral
   / SliceLiteral
-  / NullLiteral
+  / NilLiteral
   / BooleanLiteral
   / DecimalLiteral
   / StringLiteral
@@ -519,8 +519,8 @@ StringLiteral "string"
       return { tag : "Literal", value : chars.charCodeAt(0)}
   }
 
-NullLiteral
-  = NullToken { return { tag: "Literal", value: null }; }
+NilLiteral
+  = NilToken { return { tag: "Literal", value: null }; }
 
 BooleanLiteral
   = TrueToken  { return { tag: "Literal", value: true  }; }
@@ -586,7 +586,7 @@ FalseToken      = "false"      !IdentifierPart
 ForToken        = "for"        !IdentifierPart
 FunctionToken   = "func"       !IdentifierPart
 IfToken         = "if"         !IdentifierPart
-NullToken       = "null"       !IdentifierPart
+NilToken        = "nil"        !IdentifierPart
 ReturnToken     = "return"     !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 VarToken        = "var"        !IdentifierPart
@@ -601,7 +601,7 @@ Tokens "tokens"
   / ForToken
   / FunctionToken
   / IfToken
-  / NullToken
+  / NilToken
   / ReturnToken
   / TrueToken
   / VarToken
