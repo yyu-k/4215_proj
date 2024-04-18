@@ -60,3 +60,9 @@
   margin: 0;
   padding: 4px 16px 0;
 }
+
+.active-line {
+  background: red;
+  width: 5px !important;
+  margin-left: 3px;
+}

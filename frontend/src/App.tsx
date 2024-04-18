@@ -14,6 +14,7 @@ import { Tab, Tabs } from "./Tabs";
 import { getErrorDescription, getHeapJSValueString } from "./utils";
 
 import "./App.css";
+import { handle_blocked_machines } from "go-slang/dist/scheduler";
 
 type Editor = monaco.editor.IStandaloneCodeEditor;
 
@@ -34,6 +35,14 @@ type EditorState =
       state: "compiled";
       ast: unknown;
       instructions: Instruction[];
+    }
+  | {
+      state: "stepping";
+      ast: unknown;
+      instructions: Instruction[];
+      machines: Machine[];
+      heap: Heap;
+      activeMachineIndex: number;
     }
   | {
       state: "finished";
@@ -70,7 +79,7 @@ function App() {
     window.localStorage.setItem("program", value ?? "");
   };
 
-  function compileProgram(runProgram: boolean = false) {
+  function compileProgram(runProgram: boolean = false): EditorState {
     const programText = editorRef.current!.getValue();
     try {
       const ast = parse(programText, {});
@@ -78,47 +87,90 @@ function App() {
         const instructions = compile_program(ast);
         if (runProgram) {
           const { heap, machines } = run(instructions, { heap_size: 50000 });
-          setEditorState({
+          return {
             state: "finished",
             ast,
             instructions,
             heap,
             machines,
-          });
+          };
         } else {
-          setEditorState({
+          return {
             state: "compiled",
             ast,
             instructions,
-          });
+          };
         }
       } catch (err) {
-        setEditorState({
+        return {
           state: "compile-error",
           ast,
           error: getErrorDescription(err),
-        });
+        };
       }
     } catch (err) {
-      setEditorState({
+      return {
         state: "parse-error",
         error: getErrorDescription(err),
-      });
+      };
     }
+  }
+
+  function stepProgram(): EditorState {
+    let ast: unknown;
+    let heap: Heap;
+    let instructions: Instruction[];
+    let machines: Machine[];
+    let activeMachineIndex: number;
+    if (editorState.state !== "stepping") {
+      const newState = compileProgram();
+      if (newState.state !== "compiled") {
+        return newState;
+      }
+      ({ instructions, ast } = newState);
+      heap = new Heap();
+      machines = [new Machine(instructions, heap)];
+      activeMachineIndex = 0;
+    } else {
+      ({ instructions, ast, heap, machines, activeMachineIndex } = editorState);
+    }
+
+    const result = machines[activeMachineIndex].run(1);
+    if (result.new_machines.length > 0) {
+      machines = machines.concat(result.new_machines);
+    }
+    handle_blocked_machines(heap, machines);
+
+    return {
+      state: "stepping",
+      ast,
+      instructions,
+      heap,
+      machines,
+      activeMachineIndex,
+    };
   }
 
   return (
     <div className="grid">
       <div className="row-1 column-1 header">
         <h1>go-slang</h1>
-        <button onClick={() => compileProgram(true)}>Run</button>
-        <button onClick={() => compileProgram()}>Compile</button>
+        <button onClick={() => setEditorState(compileProgram(true))}>
+          Run
+        </button>
+        <button onClick={() => setEditorState(compileProgram())}>
+          Compile
+        </button>
+        <button onClick={() => setEditorState(stepProgram())}>Step</button>
       </div>
       <div className="column-1">
         <Editor
           language="go"
           defaultValue="a := 1"
-          options={{ minimap: { enabled: false } }}
+          options={{
+            minimap: { enabled: false },
+            readOnly: editorState.state === "stepping",
+          }}
           onMount={handleEditorDidMount}
           onChange={handleEditorDidChange}
         />
@@ -126,7 +178,10 @@ function App() {
 
       <InstructionsPanel editorState={editorState} />
 
-      <MachinesPanel editorState={editorState} />
+      <MachinesPanel
+        editorState={editorState}
+        setEditorState={setEditorState}
+      />
     </div>
   );
 }
@@ -134,7 +189,12 @@ function App() {
 type InstructionsTab = "instructions" | "ast";
 
 function InstructionsPanel({ editorState }: { editorState: EditorState }) {
+  const [editor, setEditor] = useState<Editor | null>(null);
   const [tab, setTab] = useState<InstructionsTab>("instructions");
+
+  const handleEditorDidMount: OnMount = (editor) => {
+    setEditor(editor);
+  };
 
   useEffect(() => {
     switch (editorState.state) {
@@ -146,11 +206,34 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
         setTab("ast");
         return;
       case "compiled":
+      case "stepping":
       case "finished":
         // Persist tab since both tabs are available
         return;
     }
   }, [editorState.state]);
+
+  const highlightedLine =
+    editorState.state === "stepping"
+      ? editorState.machines[editorState.activeMachineIndex].PC + 1
+      : undefined;
+
+  useEffect(() => {
+    if (!editor) return;
+    if (highlightedLine) {
+      const decorations = editor.createDecorationsCollection([
+        {
+          range: new monaco.Range(highlightedLine, 1, highlightedLine, 1),
+          options: {
+            isWholeLine: true,
+            linesDecorationsClassName: "active-line",
+          },
+        },
+      ]);
+
+      return () => decorations.clear();
+    }
+  }, [highlightedLine, editor]);
 
   return (
     <>
@@ -170,6 +253,7 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
                   </>
                 );
               case "compiled":
+              case "stepping":
               case "finished":
                 return (
                   <>
@@ -197,9 +281,11 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
                   />
                 );
               case "compiled":
+              case "stepping":
               case "finished":
                 return (
                   <Editor
+                    onMount={handleEditorDidMount}
                     value={editorState.instructions
                       .map((output) => JSON.stringify(output))
                       .join("\n")}
@@ -226,6 +312,7 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
                 );
               case "compile-error":
               case "compiled":
+              case "stepping":
               case "finished":
                 return (
                   <Editor
@@ -240,15 +327,32 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
   );
 }
 
-function MachinesPanel({ editorState }: { editorState: EditorState }) {
-  const [machineIndex, setMachineIndex] = useState(0);
+function MachinesPanel({
+  editorState,
+  setEditorState,
+}: {
+  editorState: EditorState;
+  setEditorState: (editorState: EditorState) => void;
+}) {
+  const [internalMachineIndex, setInternalMachineIndex] = useState(0);
+  const machineIndex =
+    editorState.state === "stepping"
+      ? editorState.activeMachineIndex
+      : internalMachineIndex;
+  const setMachineIndex =
+    editorState.state === "stepping"
+      ? (index: number) => {
+          setEditorState({ ...editorState, activeMachineIndex: index });
+        }
+      : setInternalMachineIndex;
   const machine =
-    editorState.state === "finished"
+    editorState.state === "stepping" || editorState.state === "finished"
       ? editorState.machines[machineIndex]
       : undefined;
 
   useEffect(() => {
     setMachineIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorState.state]);
 
   return (
@@ -262,6 +366,7 @@ function MachinesPanel({ editorState }: { editorState: EditorState }) {
               case "compile-error":
               case "compiled":
                 return <Tab name={0}>Default Machine</Tab>;
+              case "stepping":
               case "finished":
                 return editorState.machines.map((_, i) => (
                   <Tab name={i}>
@@ -313,23 +418,23 @@ function MachinesPanel({ editorState }: { editorState: EditorState }) {
                 </pre>
               </>
             )}
-            {editorState.state === "finished" &&
-              machine.state.state === "finished" && (
-                <>
-                  <p>
-                    <strong>Operand stack:</strong>{" "}
-                  </p>
-                  <pre>
-                    <code>
-                      {machine.OS.map((address) =>
-                        getHeapJSValueString(editorState.heap, address),
-                      )
-                        .reverse()
-                        .join("\n")}
-                    </code>
-                  </pre>
-                </>
-              )}
+            {(editorState.state === "stepping" ||
+              editorState.state === "finished") && (
+              <>
+                <p>
+                  <strong>Operand stack:</strong>{" "}
+                </p>
+                <pre>
+                  <code>
+                    {machine.OS.map((address) =>
+                      getHeapJSValueString(editorState.heap, address),
+                    )
+                      .reverse()
+                      .join("\n")}
+                  </code>
+                </pre>
+              </>
+            )}
           </>
         )}
       </div>
