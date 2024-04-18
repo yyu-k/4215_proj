@@ -171,7 +171,7 @@ type MicrocodeFunctions<Instructions extends { tag: string }> = {
 
 type MachineRunResult = {
   state: MachineState;
-  new_machine?: Machine | undefined;
+  new_machines: Machine[];
   instructions_ran: number;
 };
 
@@ -536,11 +536,12 @@ export class Machine {
 
   run(num_instructions: number): MachineRunResult {
     let instructions_ran = 0;
+    let new_machines: Machine[] = [];
 
     // Machines cannot progress on blocked send/receive for unbuffered channels.
     // This is handled in the scheduler.
     if (this.is_finished() || this.is_blocked()) {
-      return { state: this.state, instructions_ran };
+      return { state: this.state, instructions_ran, new_machines };
     }
 
     while (
@@ -577,7 +578,7 @@ export class Machine {
               );
             }
           }
-          return { state: this.state, instructions_ran };
+          return { state: this.state, instructions_ran, new_machines };
         } else if (current_state.state === "failed_wait") {
           this.state = { state: "default" };
           while (true) {
@@ -593,15 +594,13 @@ export class Machine {
             }
           }
           //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
-          return { state: this.state, instructions_ran };
+          return { state: this.state, instructions_ran, new_machines };
         } else if (
           current_state.state === "blocked_send" ||
           current_state.state === "blocked_receive"
         ) {
-          return { state: this.state, instructions_ran };
-        }
-        // TODO: spawning go machines doesn't need to trigger breaking out of loop
-        else if (
+          return { state: this.state, instructions_ran, new_machines };
+        } else if (
           typeof result === "object" &&
           result != null &&
           "type" in result &&
@@ -609,22 +608,18 @@ export class Machine {
           result.type === "new_machine" &&
           result.value instanceof Machine
         ) {
-          return {
-            state: this.state,
-            new_machine: result.value,
-            instructions_ran,
-          };
+          new_machines.push(result.value);
         }
       } catch (error) {
         this.state = { state: "errored", error };
-        return { state: this.state, instructions_ran };
+        return { state: this.state, instructions_ran, new_machines };
       }
     }
 
     if (this.instrs[this.PC].tag === "DONE") {
       this.state = { state: "finished" };
     }
-    return { state: this.state, instructions_ran };
+    return { state: this.state, instructions_ran, new_machines };
   }
 
   get_final_output() {

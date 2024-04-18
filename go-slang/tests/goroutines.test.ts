@@ -17,7 +17,7 @@ describe("goroutines", () => {
   });
 
   // TODO: should we be able to call functions before they are defined?
-  test("main machine should end before other machines without synchronization", () => {
+  test("main machine should end before other machines without synchronization with larger instruction counts", () => {
     const program = `
       func add(a, b) {
         return a + b;
@@ -25,12 +25,11 @@ describe("goroutines", () => {
       go add(1, 2)
       add(10, 15)
     `;
-    const result = compile_and_run(program, 1);
+    const result = compile_and_run(program, 30);
     expect(result).toHaveLength(2);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(25);
-    // TODO: fix bug, second machine doesn't need to be executed
     expect(result[1].state.state).toStrictEqual("default");
     expect(result[1].output).toStrictEqual([]);
     expect(result[1].final_value).toStrictEqual(null);

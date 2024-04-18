@@ -24,46 +24,43 @@ export function run(
   machines.push(machine);
 
   let all_finished = false;
+  let main_machine_finished = false;
   let has_blocked_machines = false;
   let unblock_count = 0;
-  while (!all_finished) {
+
+  while (!main_machine_finished && !all_finished) {
     all_finished = true;
 
-    outer: for (let i = 0; i < machines.length; i++) {
+    for (let i = 0; i < machines.length; i++) {
       const machine = machines[i];
       if (!machine.is_finished() && !machine.is_blocked()) {
-        // keep running same machine even if it creates new machine
-        while (true) {
-          const result = machine.run(timeslice);
-          if (result.new_machine instanceof Machine) {
-            machines.push(result.new_machine);
-          } else if (
-            result.state.state === "failed_lock" ||
-            result.state.state === "failed_wait"
-          ) {
-            // just switch to another machine
-            continue outer;
-          } else if (
-            result.state.state === "blocked_send" ||
-            result.state.state === "blocked_receive"
-          ) {
-            has_blocked_machines = true;
-            break;
-          } else {
-            break;
-          }
+        const result = machine.run(timeslice);
+        for (const new_machine of result.new_machines) {
+          machines.push(new_machine);
+        }
+        if (
+          result.state.state === "failed_lock" ||
+          result.state.state === "failed_wait"
+        ) {
+          // just switch to another machine
+          continue;
+        } else if (
+          result.state.state === "blocked_send" ||
+          result.state.state === "blocked_receive"
+        ) {
+          has_blocked_machines = true;
         }
         all_finished = false;
       }
 
-      // stop running other machines once the main machine is finished
-      if (machine.is_finished() && i === 0) {
-        all_finished = true;
+      // Stop running other machines once the main machine is finished
+      if (i === 0 && machine.is_finished()) {
+        main_machine_finished = true;
         break;
       }
     }
 
-    if (has_blocked_machines) {
+    if (!main_machine_finished && has_blocked_machines) {
       // Throw an error if we've attempted to unblock machines multiple times without any success,
       // which usually indicates a deadlock.
       const should_error = unblock_count > 5 || all_finished;
@@ -97,7 +94,7 @@ export function handle_blocked_machines(
 
   let unblocked_machines = 0;
 
-  // Try to unblock machines which are directly blocked on each other
+  // Try to unblock machines which are directly blocked on each other for send/receive
   outer: for (let i = 0; i < blocked_send_machines.length; i++) {
     const blocked_send_machine = blocked_send_machines[i];
 
@@ -133,6 +130,7 @@ export function handle_blocked_machines(
     }
   }
 
+  // Try to unblock machines trying to send to a previously full channel
   for (let i = 0; i < blocked_send_machines.length; i++) {
     const blocked_send_machine = blocked_send_machines[i];
 
@@ -156,6 +154,7 @@ export function handle_blocked_machines(
     }
   }
 
+  // Try to unblock machines trying to receive from a previously empty channel
   for (let i = 0; i < blocked_receive_machines.length; i++) {
     const blocked_receive_machine = blocked_receive_machines[i];
 
@@ -178,6 +177,7 @@ export function handle_blocked_machines(
     }
   }
 
+  // Error if we did not unblock any machines, and the user specified that we should error
   if (
     should_error &&
     (blocked_send_machines.length > 0 || blocked_receive_machines.length > 0) &&
