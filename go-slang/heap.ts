@@ -2,8 +2,11 @@
 // HEAP
 // *************************/
 
+import { builtins, added_builtins, constants } from "./builtins";
 import { Machine } from "./machine";
 import { word_to_string } from "./utilities";
+
+const DEFAULT_HEAP_SIZE = 50000;
 
 const WORD_SIZE = 8;
 
@@ -80,28 +83,32 @@ export class Heap {
   gc_flag: boolean;
 
   // allocates a heap of given size (in bytes) and returns a DataView of that
-  constructor(
-    words: number,
-    builtins: Builtins,
-    added_builtins: Builtins,
-    constants: Constants,
-    gc_flag: boolean,
-  ) {
-    const data = new ArrayBuffer(words * WORD_SIZE);
+  constructor(options?: {
+    heap_size?: number;
+    gc?: boolean;
+    builtins?: Builtins;
+    added_builtins?: Builtins;
+    constants?: Constants;
+  }) {
+    const {
+      heap_size = DEFAULT_HEAP_SIZE,
+      builtins: custom_builtins = builtins,
+      added_builtins: custom_added_builtins = added_builtins,
+      constants: custom_constants = constants,
+      gc = true,
+    } = options || {};
+
+    const data = new ArrayBuffer(heap_size * WORD_SIZE);
     this.data = new DataView(data);
-    if (gc_flag !== undefined) {
-      this.gc_flag = gc_flag;
-    } else {
-      this.gc_flag = true;
-    }
+    this.gc_flag = gc;
 
-    this.size = words;
+    this.size = heap_size;
 
-    this.top = words - NODE_SIZE + 1; //The address must be strictly lower than HEAPTOP
+    this.top = heap_size - NODE_SIZE + 1; //The address must be strictly lower than HEAPTOP
     // initialize free list:
     // every free node carries the address of the next free node as its first word
     let i = 0;
-    for (i = 0; i <= words - NODE_SIZE; i = i + NODE_SIZE) {
+    for (i = 0; i <= heap_size - NODE_SIZE; i = i + NODE_SIZE) {
       this.set(i, i + NODE_SIZE);
     }
     // the empty free list is represented by -1
@@ -118,9 +125,11 @@ export class Heap {
 
     this.machines = new Set();
 
-    this.builtins_frame = this.allocate_builtin_frame(builtins);
-    this.added_builtins_frame = this.allocate_builtin_frame(added_builtins);
-    this.constants_frame = this.allocate_constant_frame(constants);
+    this.builtins_frame = this.allocate_builtin_frame(custom_builtins);
+    this.added_builtins_frame = this.allocate_builtin_frame(
+      custom_added_builtins,
+    );
+    this.constants_frame = this.allocate_constant_frame(custom_constants);
 
     // Initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept.
     this.bottom = this.free;

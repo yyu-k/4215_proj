@@ -1,22 +1,24 @@
-import { builtins, constants, added_builtins } from "./builtins";
 import { Heap } from "./heap";
 import { Instruction, Machine } from "./machine";
 
+const DEFAULT_HEAP_SIZE = 50000;
 const DEFAULT_TIMESLICE = 100;
 
 export function run(
   instrs: Instruction[],
-  heap_size: number,
-  timeslice: number = DEFAULT_TIMESLICE,
-  gc_flag: boolean = true,
+  options?: {
+    heap_size: number;
+    timeslice: number;
+    gc: boolean;
+  },
 ) {
-  const heap = new Heap(
-    heap_size,
-    builtins,
-    added_builtins,
-    constants,
-    gc_flag,
-  );
+  const {
+    heap_size = DEFAULT_HEAP_SIZE,
+    timeslice = DEFAULT_TIMESLICE,
+    gc = true,
+  } = options || {};
+
+  const heap = new Heap({ heap_size, gc });
   const machines: Machine[] = [];
   const machine = new Machine(instrs, heap);
   machines.push(machine);
@@ -81,10 +83,10 @@ export function run(
   return machines.map((machine) => machine.get_final_output());
 }
 
-function handle_blocked_machines(
+export function handle_blocked_machines(
   heap: Heap,
   machines: Machine[],
-  should_error: boolean,
+  should_error: boolean = false,
 ) {
   const blocked_send_machines = machines.filter(
     (machine) => machine.state.state === "blocked_send",
