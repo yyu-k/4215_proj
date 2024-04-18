@@ -340,21 +340,28 @@ ShortDeclaration "short variable declaration"
     }
 
 AssignmentStatement
-    = lhs_expressions:LeftHandSideExpression|1.., __ "," __ |
+    = lhs_expressions:LeftHandSideExpression|1.., __ "," __|
         __ Assmt __
         rhs_expressions:Expression|1.., __ "," __|
         {
+            const modified_lhs_expressions = lhs_expressions.map((expr) => {
+                if (expr.tag !== "index_get" && expr.tag !== "nam") {
+                    throw new Error("assignment expression LHS must be an index expression or identifier")
+                }
+                if (expr.tag === "index_get") {
+                    return new IndexSetComp(expr.source, expr.index)
+                }
+                return expr;
+            });
             return {
                 tag: 'assmt',
-                lhs_expressions,
+                lhs_expressions: modified_lhs_expressions,
                 rhs_expressions,
             }
         }
 
 LeftHandSideExpression
-    = symbol:NameExpression __ "[" __ index:Expression __ "]" {
-        return new IndexSetComp(symbol, index)
-    }
+    = ComplexExpression
     / NameExpression
 
 GoStatement "go statement"

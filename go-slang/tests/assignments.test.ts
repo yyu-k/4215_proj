@@ -80,14 +80,30 @@ describe("multiple array assignments", () => {
 
   test("mixed array and variable assignments", () => {
     const program = `
-      x := [10]{}
-      var a int;
-      a, x[1], x[2] = 9, 12, 15
-      a + x[1] + x[2]
+      x := [10]{[10]{}}
+      var a int
+      a, x[0][0], x[1], x[2] = 9, 12, 15, 18
+      a + x[0][0] + x[1] + x[2]
     `;
     const result = compile_and_run(program);
     expect(result).toHaveLength(1);
     expect(result[0].state.state).toStrictEqual("finished");
-    expect(result[0].final_value).toStrictEqual(36);
+    expect(result[0].final_value).toStrictEqual(54);
+  });
+
+  test("assigning to array return result of functions", () => {
+    const program = `
+      x := [10]{[10]{}}
+      func array() {
+        return x
+      }
+      array()[0][0], array()[1] = 1, 2
+      x[0][0] + x[1]
+    `;
+    const result = compile_and_run(program);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(3);
   });
 });
