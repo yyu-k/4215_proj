@@ -8,5 +8,6 @@ export function compile_and_run(
 ) {
   const ast = parse(program_str, {});
   const instructions = compile_program(ast);
-  return run(instructions, { heap_size, timeslice, gc });
+  const { machines } = run(instructions, { heap_size, timeslice, gc });
+  return machines.map((machine) => machine.get_final_output());
 }

@@ -7,9 +7,9 @@ const DEFAULT_TIMESLICE = 100;
 export function run(
   instrs: Instruction[],
   options?: {
-    heap_size: number;
-    timeslice: number;
-    gc: boolean;
+    heap_size?: number;
+    timeslice?: number;
+    gc?: boolean;
   },
 ) {
   const {
@@ -77,7 +77,10 @@ export function run(
     }
   }
 
-  return machines.map((machine) => machine.get_final_output());
+  return {
+    heap,
+    machines,
+  };
 }
 
 export function handle_blocked_machines(

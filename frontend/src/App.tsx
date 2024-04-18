@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { parse, compile_program, run, Instruction } from "go-slang";
+import {
+  parse,
+  compile_program,
+  run,
+  Instruction,
+  Heap,
+  Machine,
+} from "go-slang";
 import { Editor, OnChange, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
-import "./App.css";
 import { Tab, Tabs } from "./Tabs";
 import { getErrorDescription } from "./utils";
 
+import "./App.css";
+
 type Editor = monaco.editor.IStandaloneCodeEditor;
-type Machines = ReturnType<typeof run>;
 
 type EditorState =
   | {
@@ -32,7 +39,8 @@ type EditorState =
       state: "finished";
       ast: unknown;
       instructions: Instruction[];
-      machines: Machines;
+      machines: Machine[];
+      heap: Heap;
     };
 
 function App() {
@@ -69,12 +77,13 @@ function App() {
       try {
         const instructions = compile_program(ast);
         if (runProgram) {
-          const results = run(instructions, 50000);
+          const { heap, machines } = run(instructions, { heap_size: 50000 });
           setEditorState({
             state: "finished",
             ast,
             instructions,
-            machines: results,
+            heap,
+            machines,
           });
         } else {
           setEditorState({
@@ -194,7 +203,11 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
                     value={editorState.instructions
                       .map((output) => JSON.stringify(output))
                       .join("\n")}
-                    options={{ minimap: { enabled: false }, readOnly: true }}
+                    options={{
+                      minimap: { enabled: false },
+                      readOnly: true,
+                      lineNumbers: (number) => `${number - 1}`,
+                    }}
                   />
                 );
             }
@@ -278,9 +291,9 @@ function MachinesPanel({ editorState }: { editorState: EditorState }) {
               <p>
                 <strong>Final value:</strong>{" "}
                 <code>
-                  {machine.final_value === undefined
+                  {machine.get_final_output().final_value === undefined
                     ? "undefined"
-                    : JSON.stringify(machine.final_value)}
+                    : JSON.stringify(machine.get_final_output().final_value)}
                 </code>
               </p>
             )}
