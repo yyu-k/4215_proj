@@ -207,11 +207,21 @@ FunctionStatement "function statement"
   = FunctionDeclaration
 
 FunctionDeclaration "function declaration"
-  = FunctionToken __ symbol:Identifier __ "(" __ params:ExpressionList __ ")" __ body: Block {
+  = FunctionToken __ symbol:Identifier __ "(" __ params:NameExpression|.., __ "," __| __ ")" __ body: Block {
         return {
             tag: "fun",
             sym: symbol,
             prms: params.map(x => x.sym),
+            body,
+        }
+    }
+
+FunctionExpression "function expression"
+  = FunctionToken __ "(" __ params:NameExpression|.., __ "," __| __ ")" __ body: Block {
+        return {
+            tag: "lam",
+            prms: params.map(x => x.sym),
+            arity: params.length,
             body,
         }
     }
@@ -473,6 +483,7 @@ Index "index access"
 PrimaryExpression
     = Literal
     / NameExpression
+    / FunctionExpression
     / "(" __ @Expression __ ")"
 
 NameExpression

@@ -34,4 +34,22 @@ describe("goroutines", () => {
     expect(result[1].output).toStrictEqual([]);
     expect(result[1].final_value).toStrictEqual(null);
   });
+
+  test("goroutines can be created with function expressions", () => {
+    const program = `
+      result := Channel(0)
+      go func(result, a, b) {
+        result <- a + b
+      }(result, 1, 2)
+      <-result
+    `;
+    const result = compile_and_run(program);
+    expect(result).toHaveLength(2);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(3);
+    expect(result[1].state.state).toStrictEqual("default");
+    expect(result[1].output).toStrictEqual([]);
+    expect(result[1].final_value).toStrictEqual(null);
+  });
 });

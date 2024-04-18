@@ -93,3 +93,30 @@ describe("It should be possible to return from a loop", () => {
     expect(result[0].final_value).toStrictEqual(105);
   });
 });
+
+describe("functions can be used as expressions", () => {
+  test("functions can be assigned to variables and executed", () => {
+    const result = compile_and_run(`
+      add := func (a, b) {
+        return a + b
+      }
+      add(10, 15)
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(25);
+  });
+
+  test("functions can be executed instantly", () => {
+    const result = compile_and_run(`
+      func (a, b) {
+        return a + b
+      }(10, 15)
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(25);
+  });
+});
