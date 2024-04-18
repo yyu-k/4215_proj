@@ -11,7 +11,7 @@ import { Editor, OnChange, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
 import { Tab, Tabs } from "./Tabs";
-import { getErrorDescription } from "./utils";
+import { getErrorDescription, getHeapJSValueString } from "./utils";
 
 import "./App.css";
 
@@ -287,16 +287,18 @@ function MachinesPanel({ editorState }: { editorState: EditorState }) {
                 </pre>
               </p>
             )}
-            {machine.state.state === "finished" && (
-              <p>
-                <strong>Final value:</strong>{" "}
-                <code>
-                  {machine.get_final_output().final_value === undefined
-                    ? "undefined"
-                    : JSON.stringify(machine.get_final_output().final_value)}
-                </code>
-              </p>
-            )}
+            {editorState.state === "finished" &&
+              machine.state.state === "finished" && (
+                <p>
+                  <strong>Final value:</strong>{" "}
+                  <code>
+                    {getHeapJSValueString(
+                      editorState.heap,
+                      machine.OS[machine.OS.length - 1],
+                    )}
+                  </code>
+                </p>
+              )}
             {machine.output.length > 0 && (
               <>
                 <p>
@@ -311,6 +313,23 @@ function MachinesPanel({ editorState }: { editorState: EditorState }) {
                 </pre>
               </>
             )}
+            {editorState.state === "finished" &&
+              machine.state.state === "finished" && (
+                <>
+                  <p>
+                    <strong>Operand stack:</strong>{" "}
+                  </p>
+                  <pre>
+                    <code>
+                      {machine.OS.map((address) =>
+                        getHeapJSValueString(editorState.heap, address),
+                      )
+                        .reverse()
+                        .join("\n")}
+                    </code>
+                  </pre>
+                </>
+              )}
           </>
         )}
       </div>
