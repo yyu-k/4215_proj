@@ -41,27 +41,81 @@ const JS_value_to_address = (heap: Heap, x: unknown) => {
 // operators and builtins
 // **********************/
 
-const binop_microcode = {
-  "+": (x: unknown, y: unknown) => {
+const binop_microcode: Record<string, (x: unknown, y: unknown) => unknown> = {
+  "+": (x, y) => {
     if (is_number(x) && is_number(y)) {
       return x + y;
     } else if (is_string(x) && is_string(y)) {
       return x + y;
     }
     throw new Error(
-      "+ expects two numbers or two strings, but got the following: " +
-        JSON.stringify([x, y]),
+      `+ expects two numbers or two strings, but got the following: ${JSON.stringify([x, y])}`,
     );
   },
-  // todo: add error handling to JS for the following, too
-  "*": (x, y) => x * y,
-  "-": (x, y) => x - y,
-  "/": (x, y) => x / y,
-  "%": (x, y) => x % y,
-  "<": (x, y) => x < y,
-  "<=": (x, y) => x <= y,
-  ">=": (x, y) => x >= y,
-  ">": (x, y) => x > y,
+  "*": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x * y;
+    }
+    throw new Error(
+      `* expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "-": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x - y;
+    }
+    throw new Error(
+      `binary - expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "/": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x / y;
+    }
+    throw new Error(
+      `/ expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "%": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x % y;
+    }
+    throw new Error(
+      `% expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "<": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x < y;
+    }
+    throw new Error(
+      `< expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "<=": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x <= y;
+    }
+    throw new Error(
+      `<= expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  ">=": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x >= y;
+    }
+    throw new Error(
+      `>= expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  ">": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x > y;
+    }
+    throw new Error(
+      `> expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
   "==": (x, y) => x === y,
   "!=": (x, y) => x !== y,
 };
@@ -78,8 +132,18 @@ const apply_binop = (heap: Heap, op: string, v2: number, v1: number) => {
 };
 
 const unop_microcode = {
-  "-": (x) => -x,
-  "!": (x) => !x,
+  "-": (x: unknown) => {
+    if (!is_number(x)) {
+      throw new Error(`unary - expects a number, but got ${x}`);
+    }
+    return -x;
+  },
+  "!": (x: unknown) => {
+    if (!is_boolean(x)) {
+      throw new Error(`! expects a number, but got ${x}`);
+    }
+    return !x;
+  },
 };
 
 const apply_unop = (heap: Heap, op: string, v: number) =>
