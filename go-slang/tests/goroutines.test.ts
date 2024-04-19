@@ -10,8 +10,7 @@ describe("goroutines", () => {
     expect(result[0].output).toStrictEqual([]);
     // TODO: is `false` wrong here?
     expect(result[0].final_value).toStrictEqual(false);
-    // TODO: should this be `finished`?
-    expect(result[1].state.state).toStrictEqual("default");
+    expect(result[1].state.state).toStrictEqual("finished");
     expect(result[1].output).toStrictEqual([12]);
     expect(result[1].final_value).toStrictEqual(null);
   });

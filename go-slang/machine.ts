@@ -458,6 +458,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       machine.OS = machine.OS.slice(0, -1 - arity);
       apply_builtin(new_machine, heap, heap.get_Builtin_id(fun));
       new_machine.PC = new_machine.instrs.length - 1;
+      new_machine.state = { state: "finished" };
     } else {
       if (!heap.is_Closure(fun)) {
         throw new Error("Attempt to call a non-closure");
