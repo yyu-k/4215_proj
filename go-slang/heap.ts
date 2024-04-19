@@ -965,8 +965,8 @@ export class Heap {
     if (this.is_Number(x)) return this.get(x + 1);
     if (this.is_String(x)) return this.get_string(x);
     if (this.is_Undefined(x)) return undefined;
-    if (this.is_Unassigned(x)) return "<unassigned>";
     if (this.is_Null(x)) return null;
+    if (this.is_Unassigned(x)) return "<unassigned>";
     if (this.is_Pair(x))
       return [
         this.address_to_JS_value(this.get_child(x, 0)),
@@ -977,11 +977,14 @@ export class Heap {
       return `<waitgroup: value ${this.get_child(x, 0)}>`;
     if (this.is_Slice(x)) return this.slice_to_JS_value(x);
     if (this.is_Closure(x))
-      return `<closure: arity ${this.get_Closure_arity(x)}; pc ${this.get_Closure_pc(x)}}>`;
+      return `<closure: arity ${this.get_Closure_arity(x)}; pc ${this.get_Closure_pc(x)}>`;
     if (this.is_Channel(x))
       return `<channel: buffer size ${this.get_number_of_children(x)}>`;
     if (this.is_Builtin(x)) return "<builtin>";
+    if (this.is_Callframe(x)) return "<callframe>";
+    if (this.is_Blockframe(x)) return "<blockframe>";
+    if (this.is_Whileframe(x)) return "<whileframe>";
 
-    return "unknown word tag: " + word_to_string(x);
+    return `<unknown word tag: ${word_to_string(x)}`;
   }
 }

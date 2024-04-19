@@ -236,6 +236,7 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
           },
         },
       ]);
+      editor.revealLineInCenter(highlightedLine);
 
       return () => decorations.clear();
     }
@@ -398,7 +399,8 @@ function MachinesPanel({
                 </pre>
               </p>
             )}
-            {editorState.state === "finished" &&
+            {(editorState.state === "stepping" ||
+              editorState.state === "finished") &&
               machine.state.state === "finished" && (
                 <p>
                   <strong>Final value:</strong>{" "}
@@ -424,23 +426,39 @@ function MachinesPanel({
                 </pre>
               </>
             )}
-            {(editorState.state === "stepping" ||
-              editorState.state === "finished") && (
-              <>
-                <p>
-                  <strong>Operand stack:</strong>{" "}
-                </p>
-                <pre>
-                  <code>
-                    {machine.OS.map((address) =>
-                      getHeapJSValueString(editorState.heap, address),
-                    )
-                      .reverse()
-                      .join("\n")}
-                  </code>
-                </pre>
-              </>
-            )}
+            {editorState.state === "stepping" &&
+              machine.state.state !== "finished" && (
+                <div className="stacks">
+                  <div>
+                    <p>
+                      <strong>Operand stack:</strong>{" "}
+                    </p>
+                    <pre>
+                      <code>
+                        {machine.OS.map((address) =>
+                          getHeapJSValueString(editorState.heap, address),
+                        )
+                          .reverse()
+                          .join("\n")}
+                      </code>
+                    </pre>
+                  </div>
+                  <div>
+                    <p>
+                      <strong>Runtime stack:</strong>{" "}
+                    </p>
+                    <pre>
+                      <code>
+                        {machine.RTS.map((address) =>
+                          getHeapJSValueString(editorState.heap, address),
+                        )
+                          .reverse()
+                          .join("\n")}
+                      </code>
+                    </pre>
+                  </div>
+                </div>
+              )}
           </>
         )}
       </div>

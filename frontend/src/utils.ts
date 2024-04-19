@@ -15,6 +15,10 @@ export function getHeapJSValueString(heap: Heap, address: number) {
       ? "nil"
       : value === undefined
         ? "undefined"
-        : JSON.stringify(value);
+        : typeof value === "string" &&
+            value.startsWith("<") &&
+            value.endsWith(">")
+          ? value
+          : JSON.stringify(value);
   return valueStr;
 }
