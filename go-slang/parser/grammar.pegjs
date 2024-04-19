@@ -336,7 +336,7 @@ VariableDeclaration "var declaration"
                           new ArrayCreateComp(type.size),
                           "array")
     }
-    / VarToken __ symbol:Identifier __ type:BasicType {
+    / VarToken __ symbol:Identifier __ type:BasicType? {
       return {
           tag: "var",
           sym: symbol,
@@ -630,7 +630,8 @@ ReservedWord "reserved word"
 
 // Types
 BasicType
-  = Identifier
+  = EmptyArrayType
+  / Identifier
 
 ArrayType
   //MUST be whitespace here, not __, this follows specification and wouldn't work otherwise anyway.

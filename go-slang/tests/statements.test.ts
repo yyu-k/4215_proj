@@ -100,12 +100,4 @@ describe("variable declarations", () => {
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(200);
   });
-
-  test("Will throw if there is neither type declaration nor assignment", () => {
-    const program = `
-      var x
-    `;
-    const wrapper = () => compile_and_run(program);
-    expect(wrapper).toThrow();
-  });
 });
