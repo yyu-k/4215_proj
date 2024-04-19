@@ -8,11 +8,10 @@ describe("goroutines", () => {
     expect(result).toHaveLength(2);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);
-    // TODO: is `false` wrong here?
-    expect(result[0].final_value).toStrictEqual(false);
+    expect(result[0].final_value).toStrictEqual(undefined);
     expect(result[1].state.state).toStrictEqual("finished");
     expect(result[1].output).toStrictEqual([12]);
-    expect(result[1].final_value).toStrictEqual(null);
+    expect(result[1].final_value).toStrictEqual(12);
   });
 
   test("builtin functions called as goroutines with the wrong number of arguments should error", () => {

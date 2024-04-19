@@ -459,6 +459,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       apply_builtin(new_machine, heap, heap.get_Builtin_id(fun));
       new_machine.PC = new_machine.instrs.length - 1;
       new_machine.state = { state: "finished" };
+      machine.OS.push(heap.values.Undefined);
     } else {
       if (!heap.is_Closure(fun)) {
         throw new Error("Attempt to call a non-closure");
@@ -476,12 +477,11 @@ const microcode: MicrocodeFunctions<Instruction> = {
       }
       machine.OS.pop(); // pop fun
 
-      //need to make sure that new_frame does not get deallocated before CALL exits
+      //need to make sure that new_frame does not get deallocated before GO exits
       //since new_frame is not currently referenced anywhere
       push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
       const callframe_address = heap.allocate_Callframe(
         // copy current environment
-        // TODO: check if this is correct
         machine.E,
         // set PC to DONE after returning from "function call"
         machine.instrs.length - 1,
@@ -495,6 +495,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       );
       new_machine.RTS.pop(); //remove new_frame from RTS
       new_machine.PC = new_PC;
+      machine.OS.push(heap.values.Undefined);
     }
     return { type: "new_machine", value: new_machine };
   },
