@@ -971,23 +971,27 @@ export class Heap {
           ? this.get_string(x)
           : this.is_Mutex(x)
             ? `Mutex object with value ${this.get_child(x, 0)}` //this should only be used for displaying
-            : this.is_Slice(x)
-              ? this.slice_to_JS_value(x)
-              : this.is_Undefined(x)
-                ? undefined
-                : this.is_Unassigned(x)
-                  ? "<unassigned>"
-                  : this.is_Null(x)
-                    ? null
-                    : this.is_Pair(x)
-                      ? [
-                          this.address_to_JS_value(this.get_child(x, 0)),
-                          this.address_to_JS_value(this.get_child(x, 1)),
-                        ]
-                      : this.is_Closure(x)
-                        ? "<closure>"
-                        : this.is_Builtin(x)
-                          ? "<builtin>"
-                          : "unknown word tag: " + word_to_string(x);
+            : this.is_Waitgroup(x)
+              ? `Waitgroup object with value ${this.get_child(x, 0)}`
+              : this.is_Slice(x)
+                ? this.slice_to_JS_value(x)
+                : this.is_Undefined(x)
+                  ? undefined
+                  : this.is_Unassigned(x)
+                    ? "<unassigned>"
+                    : this.is_Null(x)
+                      ? null
+                      : this.is_Pair(x)
+                        ? [
+                            this.address_to_JS_value(this.get_child(x, 0)),
+                            this.address_to_JS_value(this.get_child(x, 1)),
+                          ]
+                        : this.is_Closure(x)
+                          ? "<closure>"
+                          : this.is_Builtin(x)
+                            ? "<builtin>"
+                            : this.is_Channel(x)
+                              ? "<channel>"
+                              : "unknown word tag: " + word_to_string(x);
   }
 }
