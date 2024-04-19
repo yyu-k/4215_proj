@@ -602,6 +602,7 @@ ReturnToken     = "return"     !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 WithToken       = "with"       !IdentifierPart
+GoToken         = "go"         !IdentifierPart
 
 Tokens "tokens"
   = BreakToken
@@ -617,6 +618,7 @@ Tokens "tokens"
   / TrueToken
   / VarToken
   / WithToken
+  / GoToken
 
 ReservedWord "reserved word"
   = Tokens

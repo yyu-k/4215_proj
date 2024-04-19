@@ -16,6 +16,16 @@ describe("short assignments", () => {
     expect(result[0].final_value).toStrictEqual(3);
   });
 
+  test("reserved tokens such as go cannot be short assigned", () => {
+    const program = `
+      go := 20;
+      go;
+    `;
+    const wrapper = () => compile_and_run(program);
+    //the parser will fail so the machine won't even start
+    expect(wrapper).toThrow();
+  });
+
   test("multiple variables", () => {
     const program = `
       a, b := 1, 2
@@ -47,6 +57,17 @@ describe("assignment expressions", () => {
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([1, 2]);
     expect(result[0].final_value).toStrictEqual(3);
+  });
+
+  test("reserved tokens such as go cannot be declared", () => {
+    const program = `
+      var go int
+      go = 20;
+      go;
+    `;
+    const wrapper = () => compile_and_run(program);
+    //the parser will fail so the machine won't even start
+    expect(wrapper).toThrow();
   });
 
   test("multiple variables", () => {
