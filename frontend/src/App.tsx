@@ -116,7 +116,7 @@ function App() {
     }
   }
 
-  function stepProgram(): EditorState {
+  function stepProgram(all: boolean = false): EditorState {
     let ast: unknown;
     let heap: Heap;
     let instructions: Instruction[];
@@ -135,11 +135,14 @@ function App() {
       ({ instructions, ast, heap, machines, activeMachineIndex } = editorState);
     }
 
-    const result = machines[activeMachineIndex].run(1);
-    if (result.new_machines.length > 0) {
-      machines = machines.concat(result.new_machines);
-    }
-    handle_blocked_machines(heap, machines);
+    const activeMachine = machines[activeMachineIndex];
+    do {
+      const result = activeMachine.run(1);
+      if (result.new_machines.length > 0) {
+        machines = machines.concat(result.new_machines);
+      }
+      handle_blocked_machines(heap, machines);
+    } while (all && activeMachine.state.state === "default");
 
     return {
       state: "stepping",
@@ -162,6 +165,9 @@ function App() {
           Compile
         </button>
         <button onClick={() => setEditorState(stepProgram())}>Step</button>
+        <button onClick={() => setEditorState(stepProgram(true))}>
+          Step All
+        </button>
       </div>
       <div className="column-1">
         <Editor
