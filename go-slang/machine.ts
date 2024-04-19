@@ -645,6 +645,16 @@ export class Machine {
     heap.add_machine(this);
   }
 
+  get_temporary_roots() {
+    if (this.state.state === "blocked_send") {
+      return [this.state.chan_address, this.state.value];
+    }
+    if (this.state.state === "blocked_receive") {
+      return [this.state.chan_address];
+    }
+    return [];
+  }
+
   is_finished() {
     return this.state.state === "finished" || this.state.state === "errored";
   }

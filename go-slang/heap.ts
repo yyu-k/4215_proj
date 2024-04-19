@@ -271,6 +271,7 @@ export class Heap {
       ...machine.OS,
       machine.E,
       ...machine.RTS,
+      ...machine.get_temporary_roots(),
     ]);
     // console.log('OS-start of mark sweep', OS);
     // console.log('RTS-start of mark sweep', RTS);
