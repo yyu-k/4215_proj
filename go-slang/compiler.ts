@@ -274,7 +274,6 @@ const compile_comp = {
     instrs[wc++] = goto_instruction;
     // extend compile-time environment
     compile(comp.body, compile_time_environment_extend(comp.prms, ce));
-    instrs[wc++] = { tag: "LDC", val: undefined };
     instrs[wc++] = { tag: "RESET" };
     goto_instruction.addr = wc;
   },

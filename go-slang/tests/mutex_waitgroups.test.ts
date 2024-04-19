@@ -115,7 +115,6 @@ describe("Mutex and WaitGroups should work", () => {
     for (let i = 1; i < 11; i++) {
       expect(result[i].state.state).toStrictEqual("finished");
       expect(result[i].output).toStrictEqual([]);
-      // TODO: What should this be?
       expect(result[i].final_value).toStrictEqual(undefined);
     }
   });

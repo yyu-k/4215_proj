@@ -83,14 +83,13 @@ describe("Buffered channels", () => {
       <-done
       sum
     `;
-    const result = compile_and_run(program, 5);
+    const result = compile_and_run(program, 1);
     expect(result).toHaveLength(2);
     expect(result[0].state.state).toStrictEqual("finished");
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(2);
-    // TODO: this should probably be `finished`
-    expect(result[1].state.state).toStrictEqual("default");
+    expect(result[1].state.state).toStrictEqual("finished");
     expect(result[1].output).toStrictEqual([]);
-    expect(result[1].final_value).toStrictEqual(null);
+    expect(result[1].final_value).toStrictEqual(false);
   });
 });
