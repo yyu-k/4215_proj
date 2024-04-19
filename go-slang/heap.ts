@@ -8,7 +8,6 @@ import { word_to_string } from "./utilities";
 
 const DEFAULT_HEAP_SIZE = 50000;
 const WORD_SIZE = 8;
-const NODE_SIZE = 20;
 const SIZE_OFFSET = 5;
 
 // values
@@ -558,12 +557,6 @@ export class Heap {
   // [1 byte tag, 4 bytes unused, 2 bytes #children, 1 byte unused]
   // followed by head and tail addresses, one word each
   allocate_Array(size: number) {
-    //limitation with constant sized nodes
-    if (size > NODE_SIZE - 1) {
-      throw new Error(
-        `Attempt to allocate array of size ${size} failed due to fixed node size`,
-      );
-    }
     //size of node is the tag + number of children (array elements)
     const array_address = this.allocate(Array_tag, size + 1);
     //initialize array values to null
@@ -828,12 +821,6 @@ export class Heap {
   // 2 bytes unused, 2 bytes #children, 1 byte unused]
   // followed by children
   allocate_Channel(size: number) {
-    // limitation with constant sized nodes
-    if (size > NODE_SIZE - 1) {
-      throw new Error(
-        `Attempt to allocate channel of size ${size} failed due to fixed node size`,
-      );
-    }
     // size of node is the tag + number of children (array elements)
     const channel_address = this.allocate(Channel_tag, size + 1);
     this.set_2_bytes_at_offset(channel_address, 1, 0);
