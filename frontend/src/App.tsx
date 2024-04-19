@@ -385,7 +385,7 @@ function MachinesPanel({
         </Tabs>
       </div>
 
-      <div className="column-3">
+      <div className="column-3 machine">
         {machine && (
           <>
             <p>

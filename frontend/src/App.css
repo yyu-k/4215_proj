@@ -33,7 +33,7 @@
 
 .tabs {
   display: flex;
-  overflow-x: scroll;
+  overflow-x: auto;
   scrollbar-width: none;
 }
 
@@ -69,5 +69,11 @@
 
 .stacks {
   display: grid;
+  gap: 16px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.machine {
+  max-height: calc(100vh - 64px);
+  overflow: auto;
 }
