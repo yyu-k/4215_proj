@@ -181,8 +181,8 @@ export type Instruction =
   | { tag: "RESET" }
   | { tag: "SEND" }
   | { tag: "RECEIVE" }
-  | { tag: "MUTEX" ; type : "Lock" | "Unlock" }
-  | { tag: "WAITGROUP"; type : "Add" | "Wait" | "Done"}
+  | { tag: "MUTEX"; type: "Lock" | "Unlock" }
+  | { tag: "WAITGROUP"; type: "Add" | "Wait" | "Done" }
   | { tag: "GO"; arity: number }
   | { tag: "ASSIGN"; pos: Position }
   | { tag: "SLICE_CREATE"; init_size: number }
@@ -554,55 +554,62 @@ const microcode: MicrocodeFunctions<Instruction> = {
   },
   MUTEX: (machine, heap, instr) => {
     machine.state = { state: "default" }; //reset the state
-    const mutex_address = peek(machine.OS, 0)
-    if (!heap.is_Mutex(mutex_address)){
-      throw new Error("Mutex operation attempted when mutex addresss is not on top of OS");
+    const mutex_address = peek(machine.OS, 0);
+    if (!heap.is_Mutex(mutex_address)) {
+      throw new Error(
+        "Mutex operation attempted when mutex addresss is not on top of OS",
+      );
     }
     if (instr.type === "Lock") {
       const current_mutex_value = heap.get_Mutex_value(mutex_address);
       if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED);
-        machine.OS.pop() //consume the mutex address
-        push(machine.OS, heap.values.null)
+        machine.OS.pop(); //consume the mutex address
+        push(machine.OS, heap.values.null);
       } else {
-        machine.state = { state: "failed_lock" }
+        machine.state = { state: "failed_lock" };
         //mutex address not consumed because busy wait will occur
       }
       //LOCK always return null, which gets popped in a sequence
     } else if (instr.type === "Unlock") {
-        heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
-        machine.OS.pop() //consume the mutex address
-        //UNLOCK always return null, which gets popped in a sequence
-        push(machine.OS, heap.values.null)
+      heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
+      machine.OS.pop(); //consume the mutex address
+      //UNLOCK always return null, which gets popped in a sequence
+      push(machine.OS, heap.values.null);
     } else {
-      throw new Error("Unknown type for MUTEX bytecode")
+      throw new Error("Unknown type for MUTEX bytecode");
     }
   },
-  WAITGROUP : (machine, heap, instr) => {
+  WAITGROUP: (machine, heap, instr) => {
     machine.state = { state: "default" }; //reset the state
-    const waitgroup_address = peek(machine.OS, 0)
+    const waitgroup_address = peek(machine.OS, 0);
     if (!heap.is_Waitgroup(waitgroup_address))
-      throw new Error("Waitgroup operation attempted when waitgroup addresss is not on top of OS");
+      throw new Error(
+        "Waitgroup operation attempted when waitgroup addresss is not on top of OS",
+      );
     if (instr.type === "Add") {
-      const current_waitgroup_value = heap.get_Waitgroup_value(waitgroup_address);
+      const current_waitgroup_value =
+        heap.get_Waitgroup_value(waitgroup_address);
       heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value + 1);
       machine.OS.pop(); //consume the waitgroup address
-      push(machine.OS, heap.values.null)
-    } else if (instr.type === "Done") { 
-      const current_waitgroup_value = heap.get_Waitgroup_value(waitgroup_address);
+      push(machine.OS, heap.values.null);
+    } else if (instr.type === "Done") {
+      const current_waitgroup_value =
+        heap.get_Waitgroup_value(waitgroup_address);
       heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value - 1);
       machine.OS.pop(); //consume the waitgroup address
-      push(machine.OS, heap.values.null)
+      push(machine.OS, heap.values.null);
     } else if (instr.type === "Wait") {
-      const current_waitgroup_value = heap.get_Waitgroup_value(waitgroup_address);
+      const current_waitgroup_value =
+        heap.get_Waitgroup_value(waitgroup_address);
       if (current_waitgroup_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
-        machine.OS.pop() //consume the waitgroup address
-        push(machine.OS, heap.values.null)
+        machine.OS.pop(); //consume the waitgroup address
+        push(machine.OS, heap.values.null);
       } else {
         machine.state = { state: "failed_wait" };
       }
     } else {
-      throw new Error("Unknown type for WAITGROUP bytecode")
+      throw new Error("Unknown type for WAITGROUP bytecode");
     }
   },
   DONE: () => {},

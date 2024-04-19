@@ -3,7 +3,7 @@ import { Machine } from "./machine";
 
 export const MUTEX_CONSTANTS = {
   MUTEX_LOCKED: 1,
-  MUTEX_UNLOCKED: 0
+  MUTEX_UNLOCKED: 0,
 };
 
 type BuiltinFunction = (
