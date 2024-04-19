@@ -472,19 +472,20 @@ const microcode: MicrocodeFunctions<Instruction> = {
   MUTEX: (machine, heap, instr) => {
     machine.state = { state: "default" }; //reset the state
     const mutex_address = peek(machine.OS, 0)
-    if (!heap.is_Mutex(mutex_address))
+    if (!heap.is_Mutex(mutex_address)){
       throw new Error("Mutex operation attempted when mutex addresss is not on top of OS");
+    }
     if (instr.type === "Lock") {
       const current_mutex_value = heap.get_Mutex_value(mutex_address);
       if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED);
         machine.OS.pop() //consume the mutex address
+        push(machine.OS, heap.values.null)
       } else {
         machine.state = { state: "failed_lock" }
         //mutex address not consumed because busy wait will occur
       }
       //LOCK always return null, which gets popped in a sequence
-      push(machine.OS, heap.values.null)
     } else if (instr.type === "Unlock") {
         heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
         machine.OS.pop() //consume the mutex address
