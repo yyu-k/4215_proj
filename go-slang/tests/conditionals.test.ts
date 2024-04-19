@@ -315,7 +315,7 @@ describe("optional simple statement can be added before the predicate", () => {
   test("simple statement can declare a variable used as predicate", () => {
     const program1 = `
       x := 0
-      if const y = 5; y > 3 {
+      if y := 5; y > 3 {
         if (6 < 9) {
           x = 15
         } else {
@@ -336,7 +336,7 @@ describe("optional simple statement can be added before the predicate", () => {
   test("variables declared in simple statement are not accessible outside", () => {
     const program1 = `
       x := 0
-      if const x = 5; x > 3 {
+      if x := 5; x > 3 {
         if (6 < 9) {
           x = 15
         } else {
@@ -357,7 +357,7 @@ describe("optional simple statement can be added before the predicate", () => {
   test("else if statement can use a simple statement as well", () => {
     const program1 = `
       x := 0
-      if const y = 1; y > 3 {
+      if y := 1; y > 3 {
         x = 7
       } else if q := 3; (q == 3) {
         x = 13

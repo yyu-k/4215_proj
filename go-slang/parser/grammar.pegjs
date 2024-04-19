@@ -235,14 +235,19 @@ LoopStatement "loops"
   = WhileStatement
 
 SimpleStatement "simple statement"
-    = DeclareAssignStmt
+    = AssignmentStatement
+    / ShortDeclaration
+    / Expression
+
+SimpleWithoutDec
+  = AssignmentStatement
     / Expression
 
 WhileStatement "while statement" //while is not used in Golang
   = ForToken __
       init:SimpleStatement? __ SEMICOLON __
       pred:Expression? __ SEMICOLON __
-      post:SimpleStatement? __
+      post:SimpleWithoutDec? __
     body:Block
     {
       let while_object;
