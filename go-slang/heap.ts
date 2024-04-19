@@ -973,7 +973,8 @@ export class Heap {
         this.address_to_JS_value(this.get_child(x, 1)),
       ];
     if (this.is_Mutex(x)) return `<mutex: value ${this.get_child(x, 0)}>`;
-    if (this.is_Waitgroup(x)) return `<waitgroup: value ${this.get_child(x, 0)}>`;
+    if (this.is_Waitgroup(x))
+      return `<waitgroup: value ${this.get_child(x, 0)}>`;
     if (this.is_Slice(x)) return this.slice_to_JS_value(x);
     if (this.is_Closure(x))
       return `<closure: arity ${this.get_Closure_arity(x)}; pc ${this.get_Closure_pc(x)}}>`;
