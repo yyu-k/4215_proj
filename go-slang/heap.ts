@@ -48,6 +48,7 @@ const Whileframe_tag = 15;
 const Array_tag = 16;
 const Slice_tag = 17;
 const Channel_tag = 18;
+const Waitgroup_tag = 19;
 
 type Builtins = Record<string, { id: number }>;
 type Constants = Record<string, unknown>;
@@ -821,7 +822,10 @@ export class Heap {
   is_Number(address: number) {
     return this.get_tag(address) === Number_tag;
   }
-
+  //Mutex
+  // [1 byte tag, 4 bytes unused,
+  //  2 bytes #children, 1 byte unused]
+  // followed by the number, one word
   allocate_Mutex(n: number) {
     const mutex_address = this.allocate(Mutex_tag, 2);
     this.set_child(mutex_address, 0, n);
@@ -848,6 +852,37 @@ export class Heap {
 
   is_Mutex(address: number) {
     return this.get_tag(address) === Mutex_tag;
+  }
+  //Waitgroup
+  // [1 byte tag, 4 bytes unused,
+  //  2 bytes #children, 1 byte unused]
+  // followed by the number, one word
+  allocate_Waitgroup(n: number) {
+    const waitgroup_address = this.allocate(Waitgroup_tag, 2);
+    this.set_child(waitgroup_address, 0, n);
+    return waitgroup_address;
+  }
+
+  set_Waitgroup_value(address: number, value: number) {
+    if (!this.is_Waitgroup(address)) {
+      throw new TypeError(
+        "Attempt to set Mutex value of an address which is not a Mutex",
+      );
+    }
+    return this.set_child(address, 0, value);
+  }
+
+  get_Waitgroup_value(address: number) {
+    if (!this.is_Waitgroup(address)) {
+      throw new TypeError(
+        "Attempt to get Mutex value of an address which is not a Mutex",
+      );
+    }
+    return this.get_child(address, 0);
+  }
+
+  is_Waitgroup(address: number) {
+    return this.get_tag(address) === Waitgroup_tag;
   }
 
   // channel

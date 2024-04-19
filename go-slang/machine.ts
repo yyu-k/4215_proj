@@ -498,21 +498,20 @@ const microcode: MicrocodeFunctions<Instruction> = {
   WAITGROUP : (machine, heap, instr) => {
     machine.state = { state: "default" }; //reset the state
     const waitgroup_address = peek(machine.OS, 0)
-    //TODO change this
-    if (!heap.is_Mutex(waitgroup_address))
+    if (!heap.is_Waitgroup(waitgroup_address))
       throw new Error("Waitgroup operation attempted when waitgroup addresss is not on top of OS");
     if (instr.type === "Add") {
-      const current_waitgroup_value = heap.get_Mutex_value(waitgroup_address);
-      heap.set_Mutex_value(waitgroup_address, current_waitgroup_value + 1);
+      const current_waitgroup_value = heap.get_Waitgroup_value(waitgroup_address);
+      heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value + 1);
       machine.OS.pop(); //consume the waitgroup address
       push(machine.OS, heap.values.null)
     } else if (instr.type === "Done") { 
-      const current_waitgroup_value = heap.get_Mutex_value(waitgroup_address);
-      heap.set_Mutex_value(waitgroup_address, current_waitgroup_value - 1);
+      const current_waitgroup_value = heap.get_Waitgroup_value(waitgroup_address);
+      heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value - 1);
       machine.OS.pop(); //consume the waitgroup address
       push(machine.OS, heap.values.null)
     } else if (instr.type === "Wait") {
-      const current_waitgroup_value = heap.get_Mutex_value(waitgroup_address);
+      const current_waitgroup_value = heap.get_Waitgroup_value(waitgroup_address);
       if (current_waitgroup_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         machine.OS.pop() //consume the waitgroup address
         push(machine.OS, heap.values.null)
