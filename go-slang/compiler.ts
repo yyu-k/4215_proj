@@ -76,6 +76,9 @@ let wc: number;
 // instrs: instruction array
 let instrs: Instruction[];
 
+const mutex_functions_list = ["Lock", "Unlock"]
+const waitgroups_functions_list = ["Add", "Done", "Wait"]
+
 const compile_comp = {
   Literal: (comp, ce) => {
     instrs[wc++] = { tag: "LDC", val: comp.value };
@@ -172,11 +175,38 @@ const compile_comp = {
     instrs[wc++] = { tag: "BREAK_CONT", type: comp.type };
   },
   app: (comp, ce) => {
+    //compile "function calls" that are actually mutex/waitgroups operations differently
+    if (comp.fun.sym !== undefined && mutex_functions_list.includes(comp.fun.sym)) {
+      //don't allow more than one argument for mutex operations
+      if (comp.args.length !== 1) {
+        throw new Error("More than one argument for mutex operations")
+      }
+      //compile the argument, which should produce the mutex address on the OS
+      compile(comp.args[0], ce)
+      compile({tag : "mutex", op: comp.fun.sym}, ce)
+      return
+    } else if (comp.fun.sym !== undefined && waitgroups_functions_list.includes(comp.fun.sym)) {
+      //don't allow more than one argument for waitgroups operations
+      if (comp.args.length !== 1) {
+        throw new Error("More than one argument for waitgroups operations")
+      }
+      //compile the argument, which should produce the mutex address on the OS
+      compile(comp.args[0], ce)
+      compile({tag : "waitgroup", op: comp.fun.sym}, ce)
+      return
+    }
+    //compile actual functions call
     compile(comp.fun, ce);
     for (let arg of comp.args) {
       compile(arg, ce);
     }
     instrs[wc++] = { tag: "CALL", arity: comp.args.length };
+  },
+  mutex : (comp, ce) => {
+    instrs[wc++] = {tag : "MUTEX" , type : comp.op}
+  },
+  waitgroup : (comp, ce) => {
+    instrs[wc++] = {tag : "WAITGROUP", type : comp.op}
   },
   send: (comp, ce) => {
     compile(comp.chan, ce);

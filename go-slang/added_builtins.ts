@@ -16,20 +16,6 @@ type BuiltinFunction = (
 
 export const mutex_builtins: Record<string, BuiltinFunction> = {
   Mutex: (machine, heap) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
-  Lock: (machine, heap, _mutex_address) => {
-    const mutex_address = machine.OS.pop()!;
-    const current_mutex_value = heap.get_Mutex_value(mutex_address);
-    if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
-      heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED);
-      return MUTEX_CONSTANTS.MUTEX_SUCCESS;
-    } else {
-      return MUTEX_CONSTANTS.MUTEX_FAILURE;
-    }
-  },
-  Unlock: (machine, heap, _mutex_address) => {
-    const mutex_address = machine.OS.pop()!;
-    heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
-  },
   is_mutex: (machine, heap, _) =>
     heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,
 };

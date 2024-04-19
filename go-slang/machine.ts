@@ -87,35 +87,11 @@ const apply_unop = (heap: Heap, op: string, v: number) =>
 
 const apply_builtin = (machine: Machine, heap: Heap, builtin_id: number) => {
   // console.log(builtin_id, "apply_builtin: builtin_id:")
-  let result = builtin_array[builtin_id](machine, heap);
+  const result = builtin_array[builtin_id](machine, heap);
   // update_machine_state will set the result to heap.values.Undefined if the builtin executed
   // was a special operation which has a return value of specific meaning
-  result = update_machine_state(machine, heap, result, builtin_id);
   machine.OS.pop(); // pop fun
   push(machine.OS, result);
-};
-
-const update_machine_state = (
-  machine: Machine,
-  heap: Heap,
-  result: unknown,
-  builtin_id: number,
-) => {
-  switch (builtin_id) {
-    case added_builtins["Lock"].id:
-      if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
-        machine.state = { state: "failed_lock" };
-      }
-      return heap.values.Undefined;
-    case added_builtins["Wait"].id:
-      if (result === MUTEX_CONSTANTS.MUTEX_FAILURE) {
-        machine.state = { state: "failed_wait" };
-      }
-      return heap.values.Undefined;
-    default:
-      machine.state = { state: "default" };
-      return result;
-  }
 };
 
 // *******
@@ -141,7 +117,9 @@ export type Instruction =
   | { tag: "RESET" }
   | { tag: "SEND" }
   | { tag: "RECEIVE" }
-  | { tag: "GO"; arity: number }
+  | { tag: "MUTEX" ; type : "Lock" | "Unlock" }
+  | { tag: "WAITGROUP"; type : "Add" | "Wait" | "Done"}
+  | { tag: "GO"; arity: number } 
   | { tag: "ASSIGN"; pos: Position }
   | { tag: "SLICE_CREATE"; init_size: number }
   | { tag: "CUT_SLICE" }
@@ -362,7 +340,6 @@ const microcode: MicrocodeFunctions<Instruction> = {
         );
       }
     };
-
     const arity = instr.arity;
     const fun = peek(machine.OS, arity);
     if (heap.is_Builtin(fun)) {
@@ -492,6 +469,59 @@ const microcode: MicrocodeFunctions<Instruction> = {
       push(machine.OS, result.value);
     }
   },
+  MUTEX: (machine, heap, instr) => {
+    machine.state = { state: "default" }; //reset the state
+    const mutex_address = peek(machine.OS, 0)
+    if (!heap.is_Mutex(mutex_address))
+      throw new Error("Mutex operation attempted when mutex addresss is not on top of OS");
+    if (instr.type === "Lock") {
+      const current_mutex_value = heap.get_Mutex_value(mutex_address);
+      if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
+        heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED);
+        machine.OS.pop() //consume the mutex address
+      } else {
+        machine.state = { state: "failed_lock" }
+        //mutex address not consumed because busy wait will occur
+      }
+      //LOCK always return null, which gets popped in a sequence
+      push(machine.OS, heap.values.null)
+    } else if (instr.type === "Unlock") {
+        heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
+        machine.OS.pop() //consume the mutex address
+        //UNLOCK always return null, which gets popped in a sequence
+        push(machine.OS, heap.values.null)
+    } else {
+      throw new Error("Unknown type for MUTEX bytecode")
+    }
+  },
+  WAITGROUP : (machine, heap, instr) => {
+    machine.state = { state: "default" }; //reset the state
+    const waitgroup_address = peek(machine.OS, 0)
+    //TODO change this
+    if (!heap.is_Mutex(waitgroup_address))
+      throw new Error("Waitgroup operation attempted when waitgroup addresss is not on top of OS");
+    if (instr.type === "Add") {
+      const current_waitgroup_value = heap.get_Mutex_value(waitgroup_address);
+      heap.set_Mutex_value(waitgroup_address, current_waitgroup_value + 1);
+      machine.OS.pop(); //consume the waitgroup address
+      push(machine.OS, heap.values.null)
+    } else if (instr.type === "Done") { 
+      const current_waitgroup_value = heap.get_Mutex_value(waitgroup_address);
+      heap.set_Mutex_value(waitgroup_address, current_waitgroup_value - 1);
+      machine.OS.pop(); //consume the waitgroup address
+      push(machine.OS, heap.values.null)
+    } else if (instr.type === "Wait") {
+      const current_waitgroup_value = heap.get_Mutex_value(waitgroup_address);
+      if (current_waitgroup_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
+        machine.OS.pop() //consume the waitgroup address
+        push(machine.OS, heap.values.null)
+      } else {
+        machine.state = { state: "failed_wait" };
+      }
+    } else {
+      throw new Error("Unknown type for WAITGROUP bytecode")
+    }
+  },
   DONE: () => {},
 };
 
@@ -564,34 +594,21 @@ export class Machine {
         const current_state: MachineState = this.state as MachineState;
 
         if (current_state.state === "failed_lock") {
-          this.state = { state: "default" };
-          //Hack, to use a more sensible way of doing this.
-          while (true) {
-            this.PC -= 1;
-            const instr = this.instrs[this.PC];
-            if (instr.tag === "LD" && instr.sym === "Lock") {
-              break;
-            }
-            if (this.PC == 0) {
-              throw Error(
-                "Failed to find LD Lock after Failed Lock Signal triggered",
-              );
-            }
+          this.PC -= 1; //move back to LOCK instruction
+          const instr = this.instrs[this.PC];
+          if (instr.tag !== "MUTEX" || instr.type !== "Lock") {
+            throw Error(
+              "Failed to find LOCK instruction after Failed Lock Signal triggered",
+            );
           }
           return { state: this.state, instructions_ran, new_machines };
         } else if (current_state.state === "failed_wait") {
-          this.state = { state: "default" };
-          while (true) {
-            this.PC -= 1;
-            const instr = this.instrs[this.PC];
-            if (instr.tag === "LD" && instr.sym === "Wait") {
-              break;
-            }
-            if (this.PC == 0) {
-              throw new Error(
-                "Failed to find LD Wait after Failed Wait Signal triggered",
-              );
-            }
+          this.PC -= 1; //move back to the Wait instruction
+          const instr = this.instrs[this.PC];
+          if (instr.tag !== "WAITGROUP" || instr.type !== "Wait") {
+            throw Error(
+              "Failed to find WAIT instruction after Failed Wait Signal triggered",
+            );
           }
           //The outcome of FAILED_WAIT_SIGNAL is identical to FAILED_LOCK_SIGNAL
           return { state: this.state, instructions_ran, new_machines };
