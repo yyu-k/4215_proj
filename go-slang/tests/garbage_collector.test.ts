@@ -23,6 +23,7 @@ describe("Garbage Collector should work", () => {
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(120);
   });
+
   test("Program will throw if heap size is set to 2200 and gc_flag is set to false", () => {
     const program = `
       func fact(n) {
@@ -39,5 +40,8 @@ describe("Garbage Collector should work", () => {
     `;
     const result = compile_and_run(program, DEFAULT_TIME_SLICE, 2200, false);
     expect(result[0].state.state).toStrictEqual("errored");
+    expect((result[0].state as any).error.message).toBe(
+      "Out of memory and garbage collector turned off",
+    );
   });
 });

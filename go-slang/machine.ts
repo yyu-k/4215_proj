@@ -41,27 +41,81 @@ const JS_value_to_address = (heap: Heap, x: unknown) => {
 // operators and builtins
 // **********************/
 
-const binop_microcode = {
-  "+": (x: unknown, y: unknown) => {
+const binop_microcode: Record<string, (x: unknown, y: unknown) => unknown> = {
+  "+": (x, y) => {
     if (is_number(x) && is_number(y)) {
       return x + y;
     } else if (is_string(x) && is_string(y)) {
       return x + y;
     }
     throw new Error(
-      "+ expects two numbers or two strings, but got the following: " +
-        JSON.stringify([x, y]),
+      `+ expects two numbers or two strings, but got the following: ${JSON.stringify([x, y])}`,
     );
   },
-  // todo: add error handling to JS for the following, too
-  "*": (x, y) => x * y,
-  "-": (x, y) => x - y,
-  "/": (x, y) => x / y,
-  "%": (x, y) => x % y,
-  "<": (x, y) => x < y,
-  "<=": (x, y) => x <= y,
-  ">=": (x, y) => x >= y,
-  ">": (x, y) => x > y,
+  "*": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x * y;
+    }
+    throw new Error(
+      `* expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "-": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x - y;
+    }
+    throw new Error(
+      `binary - expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "/": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x / y;
+    }
+    throw new Error(
+      `/ expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "%": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x % y;
+    }
+    throw new Error(
+      `% expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "<": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x < y;
+    }
+    throw new Error(
+      `< expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  "<=": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x <= y;
+    }
+    throw new Error(
+      `<= expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  ">=": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x >= y;
+    }
+    throw new Error(
+      `>= expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
+  ">": (x, y) => {
+    if (is_number(x) && is_number(y)) {
+      return x > y;
+    }
+    throw new Error(
+      `> expects two numbers, but got the following: ${JSON.stringify([x, y])}`,
+    );
+  },
   "==": (x, y) => x === y,
   "!=": (x, y) => x !== y,
 };
@@ -78,8 +132,18 @@ const apply_binop = (heap: Heap, op: string, v2: number, v1: number) => {
 };
 
 const unop_microcode = {
-  "-": (x) => -x,
-  "!": (x) => !x,
+  "-": (x: unknown) => {
+    if (!is_number(x)) {
+      throw new Error(`unary - expects a number, but got ${x}`);
+    }
+    return -x;
+  },
+  "!": (x: unknown) => {
+    if (!is_boolean(x)) {
+      throw new Error(`! expects a number, but got ${x}`);
+    }
+    return !x;
+  },
 };
 
 const apply_unop = (heap: Heap, op: string, v: number) =>
@@ -119,7 +183,7 @@ export type Instruction =
   | { tag: "RECEIVE" }
   | { tag: "MUTEX" ; type : "Lock" | "Unlock" }
   | { tag: "WAITGROUP"; type : "Add" | "Wait" | "Done"}
-  | { tag: "GO"; arity: number } 
+  | { tag: "GO"; arity: number }
   | { tag: "ASSIGN"; pos: Position }
   | { tag: "SLICE_CREATE"; init_size: number }
   | { tag: "CUT_SLICE" }
@@ -333,23 +397,27 @@ const microcode: MicrocodeFunctions<Instruction> = {
     push(machine.OS, closure_address);
   },
   CALL: (machine, heap, instr) => {
-    const arity_check = (arity_1: number, arity_2: number) => {
-      if (arity_1 !== arity_2) {
-        throw new Error(
-          "Mismatch in arity between number of called arguments and number of arguments in Closure",
-        );
-      }
-    };
     const arity = instr.arity;
     const fun = peek(machine.OS, arity);
     if (heap.is_Builtin(fun)) {
       const builtin_arity = builtin_id_to_arity[heap.get_Builtin_id(fun)];
-      arity_check(builtin_arity, arity);
+      if (builtin_arity !== arity) {
+        throw new Error(
+          "Mismatch in arity between number of called arguments and number of arguments in Closure",
+        );
+      }
       return apply_builtin(machine, heap, heap.get_Builtin_id(fun));
     }
-    const new_PC = heap.get_Closure_pc(fun);
+    if (!heap.is_Closure(fun)) {
+      throw new Error("Attempt to call a non-closure");
+    }
     const closure_arity = heap.get_Closure_arity(fun);
-    arity_check(closure_arity, arity);
+    if (closure_arity !== arity) {
+      throw new Error(
+        "Mismatch in arity between number of called arguments and number of arguments in Closure",
+      );
+    }
+    const new_PC = heap.get_Closure_pc(fun);
     const new_frame = heap.allocate_Frame(arity);
     for (let i = arity - 1; i >= 0; i--) {
       heap.set_child(new_frame, i, machine.OS.pop()!);
@@ -379,12 +447,27 @@ const microcode: MicrocodeFunctions<Instruction> = {
 
     // For builtins, we don't need to create a separate call frame
     if (heap.is_Builtin(fun)) {
+      const builtin_arity = builtin_id_to_arity[heap.get_Builtin_id(fun)];
+      if (builtin_arity !== arity) {
+        throw new Error(
+          "Mismatch in arity between number of called arguments and number of arguments in Closure",
+        );
+      }
       // Shift function and arguments to new machine's operand stack
       new_machine.OS = machine.OS.slice(-arity);
       machine.OS = machine.OS.slice(0, -1 - arity);
       apply_builtin(new_machine, heap, heap.get_Builtin_id(fun));
       new_machine.PC = new_machine.instrs.length - 1;
     } else {
+      if (!heap.is_Closure(fun)) {
+        throw new Error("Attempt to call a non-closure");
+      }
+      const closure_arity = heap.get_Closure_arity(fun);
+      if (closure_arity !== arity) {
+        throw new Error(
+          "Mismatch in arity between number of called arguments and number of arguments in Closure",
+        );
+      }
       const new_PC = heap.get_Closure_pc(fun);
       const new_frame = heap.allocate_Frame(arity);
       for (let i = arity - 1; i >= 0; i--) {

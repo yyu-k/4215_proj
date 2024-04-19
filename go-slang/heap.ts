@@ -961,37 +961,26 @@ export class Heap {
     return output;
   }
   address_to_JS_value(x: number) {
-    return this.is_Boolean(x)
-      ? this.is_True(x)
-        ? true
-        : false
-      : this.is_Number(x)
-        ? this.get(x + 1)
-        : this.is_String(x)
-          ? this.get_string(x)
-          : this.is_Mutex(x)
-            ? `Mutex object with value ${this.get_child(x, 0)}` //this should only be used for displaying
-            : this.is_Waitgroup(x)
-              ? `Waitgroup object with value ${this.get_child(x, 0)}`
-              : this.is_Slice(x)
-                ? this.slice_to_JS_value(x)
-                : this.is_Undefined(x)
-                  ? undefined
-                  : this.is_Unassigned(x)
-                    ? "<unassigned>"
-                    : this.is_Null(x)
-                      ? null
-                      : this.is_Pair(x)
-                        ? [
-                            this.address_to_JS_value(this.get_child(x, 0)),
-                            this.address_to_JS_value(this.get_child(x, 1)),
-                          ]
-                        : this.is_Closure(x)
-                          ? "<closure>"
-                          : this.is_Builtin(x)
-                            ? "<builtin>"
-                            : this.is_Channel(x)
-                              ? "<channel>"
-                              : "unknown word tag: " + word_to_string(x);
+    if (this.is_Boolean(x)) return this.is_True(x) ? true : false;
+    if (this.is_Number(x)) return this.get(x + 1);
+    if (this.is_String(x)) return this.get_string(x);
+    if (this.is_Undefined(x)) return undefined;
+    if (this.is_Unassigned(x)) return "<unassigned>";
+    if (this.is_Null(x)) return null;
+    if (this.is_Pair(x))
+      return [
+        this.address_to_JS_value(this.get_child(x, 0)),
+        this.address_to_JS_value(this.get_child(x, 1)),
+      ];
+    if (this.is_Mutex(x)) return `<mutex: value ${this.get_child(x, 0)}>`;
+    if (this.is_Waitgroup(x)) return `<waitgroup: value ${this.get_child(x, 0)}>`;
+    if (this.is_Slice(x)) return this.slice_to_JS_value(x);
+    if (this.is_Closure(x))
+      return `<closure: arity ${this.get_Closure_arity(x)}; pc ${this.get_Closure_pc(x)}}>`;
+    if (this.is_Channel(x))
+      return `<channel: buffer size ${this.get_number_of_children(x)}>`;
+    if (this.is_Builtin(x)) return "<builtin>";
+
+    return "unknown word tag: " + word_to_string(x);
   }
 }

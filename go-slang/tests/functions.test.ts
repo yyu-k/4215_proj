@@ -15,6 +15,22 @@ describe("functions should be definable", () => {
   });
 });
 
+describe("non-function calls should error", () => {
+  test("non-functions should error when called", () => {
+    const result = compile_and_run(`
+      a := 1
+      a()
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("errored");
+    expect((result[0].state as any).error.message).toBe(
+      "Attempt to call a non-closure",
+    );
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(null);
+  });
+});
+
 describe("functions can have multiple return values", () => {
   test("func add(a, b) {return a + b;} add(10,15) should give 25", () => {
     const result = compile_and_run(`
