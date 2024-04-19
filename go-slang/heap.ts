@@ -7,15 +7,8 @@ import { Machine } from "./machine";
 import { word_to_string } from "./utilities";
 
 const DEFAULT_HEAP_SIZE = 50000;
-
 const WORD_SIZE = 8;
-
 const NODE_SIZE = 20;
-
-const MARK_OFFSET = 7; //last byte in the tag
-const MARKED = 1;
-const UNMARKED = 0;
-
 const SIZE_OFFSET = 5;
 
 // values
@@ -29,42 +22,42 @@ const SIZE_OFFSET = 5;
 // in garbage collection: If the (signed) Int32 is
 // non-negative, the node has been forwarded already.
 
-const False_tag = 0;
-const True_tag = 1;
-const Number_tag = 2;
-const Null_tag = 3;
-const Unassigned_tag = 4;
-const Undefined_tag = 5;
-const Blockframe_tag = 6;
-const Callframe_tag = 7;
-const Closure_tag = 8;
-const Frame_tag = 9; // 0000 1001
-const Environment_tag = 10; // 0000 1010
-const Pair_tag = 11;
-const Builtin_tag = 12;
-const Mutex_tag = 13;
-const String_tag = 14;
-const Whileframe_tag = 15;
-const Array_tag = 16;
-const Slice_tag = 17;
-const Channel_tag = 18;
-const Waitgroup_tag = 19;
+const False_tag = -2; // 11111110
+const True_tag = -3; // 11111101
+const Number_tag = -4; // 11111100
+const Null_tag = -5; // 11111011
+const Unassigned_tag = -6; // 11111010
+const Undefined_tag = -7; // 11111001
+const Blockframe_tag = -8; // 11111000
+const Callframe_tag = -9; // 11110111
+const Closure_tag = -10; // 11110110
+const Frame_tag = -11; // 11110101
+const Environment_tag = -12; // 11110100
+const Pair_tag = -13; // 11110011
+const Builtin_tag = -14; // 11110010
+const Mutex_tag = -15;
+const String_tag = -16;
+const Whileframe_tag = -17;
+const Array_tag = -18;
+const Slice_tag = -19;
+const Channel_tag = -20;
+const Waitgroup_tag = -21;
 
 type Builtins = Record<string, { id: number }>;
 type Constants = Record<string, unknown>;
 
 export class Heap {
   data: DataView;
+  // the size of the heap
   size: number;
 
-  // free is the next free index in the free list
+  // initialize spaces for Cheney's algorithm
+  space_size: number;
+  to_space: number;
+  from_space: number;
+  top_of_space: number;
+  // next free slot in heap
   free: number;
-
-  // AMENDED: The last unused byte in the tag is now used as the markbit
-  // the smallest heap address/first node address AFTER literals/constants/builtins
-  bottom: number;
-  // the last node address + 1
-  top: number;
 
   // primitive values
   values: Record<
@@ -107,18 +100,11 @@ export class Heap {
     this.gc_flag = gc;
 
     this.size = heap_size;
-
-    this.top = heap_size - NODE_SIZE + 1; //The address must be strictly lower than HEAPTOP
-    // initialize free list:
-    // every free node carries the address of the next free node as its first word
-    let i = 0;
-    for (i = 0; i <= heap_size - NODE_SIZE; i = i + NODE_SIZE) {
-      this.set(i, i + NODE_SIZE);
-    }
-    // the empty free list is represented by -1
-    this.set(i - NODE_SIZE, -1);
-    this.free = 0;
-    this.bottom = this.free;
+    this.space_size = heap_size / 2;
+    this.to_space = 0;
+    this.from_space = this.to_space + this.space_size;
+    this.top_of_space = this.to_space + this.space_size - 1;
+    this.free = this.to_space;
 
     this.values = {
       False: this.allocate(False_tag, 1),
@@ -135,9 +121,69 @@ export class Heap {
       custom_added_builtins,
     );
     this.constants_frame = this.allocate_constant_frame(custom_constants);
+  }
 
-    // Initialize HEAPBOTTOM. This ensures that literals, builtins and constants are never swept.
-    this.bottom = this.free;
+  flip() {
+    const temp = this.from_space;
+    this.from_space = this.to_space;
+    this.to_space = temp;
+    this.top_of_space = this.to_space + this.space_size - 1;
+    this.free = this.to_space;
+
+    let scan = this.to_space;
+    // copy literals
+    this.values.False = this.copy(this.values.False);
+    this.values.True = this.copy(this.values.True);
+    this.values.Null = this.copy(this.values.Null);
+    this.values.Undefined = this.copy(this.values.Undefined);
+    this.values.Unassigned = this.copy(this.values.Unassigned);
+
+    const ROOTS = Array.from(this.machines).flatMap((machine) => [
+      ...machine.OS,
+      machine.E,
+      ...machine.RTS,
+      ...machine.get_temporary_roots(),
+    ]);
+    ROOTS.forEach((address) => this.copy(address));
+    while (scan < this.free) {
+      for (let i = 1; i < this.get_number_of_children(scan); i++) {
+        this.set(scan + i, this.copy(this.get(scan + i)));
+      }
+      scan += this.get_size(scan);
+    }
+  }
+
+  copy(node: number) {
+    if (this.already_copied(node)) {
+      return this.get_forwarding_address(node);
+    } else {
+      const new_node = this.free;
+      this.move(node, new_node);
+      this.free += this.get_size(node);
+      this.set_forwarding_address(node, new_node);
+      return new_node;
+    }
+  }
+
+  move(src: number, dest: number) {
+    const n = this.get_size(src);
+    for (let i = 0; i < n; i++) {
+      this.set(dest + i, this.get(src + i));
+    }
+  }
+
+  already_copied(node: number) {
+    return (
+      this.get_forwarding_address(node) >= this.to_space &&
+      this.get_forwarding_address(node) <= this.free
+    );
+  }
+
+  set_forwarding_address(node: number, address: number) {
+    this.data.setInt32(node * WORD_SIZE, address);
+  }
+  get_forwarding_address(node: number) {
+    return this.data.getInt32(node * WORD_SIZE);
   }
 
   allocate_builtin_frame(builtins: Builtins) {
@@ -180,134 +226,21 @@ export class Heap {
   //  2 bytes #children, 1 byte unused]
   // Note: payload depends on the type of node
   allocate(tag: number, size: number) {
-    if (size > NODE_SIZE) {
-      throw new Error("limitation: nodes cannot be larger than 10 words");
-    }
-    // a value of -1 in free indicates the end of the free list
-    if (this.free === -1) {
+    if (this.free + size >= this.top_of_space) {
       if (this.gc_flag) {
-        this.mark_sweep();
+        this.flip();
       } else {
         throw new Error("Out of memory and garbage collector turned off");
       }
     }
+    if (this.free + size >= this.top_of_space) {
+      throw new Error("heap memory exhausted");
+    }
     const address = this.free;
-    this.free = this.get(this.free);
+    this.free += size;
     this.data.setInt8(address * WORD_SIZE, tag);
     this.data.setUint16(address * WORD_SIZE + SIZE_OFFSET, size);
     return address;
-  }
-
-  is_marked(address: number) {
-    return this.get_byte_at_offset(address, MARK_OFFSET) === MARKED;
-  }
-
-  //AMENDED
-  //v should be the address of the node
-  mark_byte(address: number) {
-    this.set_byte_at_offset(address, MARK_OFFSET, MARKED);
-  }
-
-  unmark_byte(address: number) {
-    this.set_byte_at_offset(address, MARK_OFFSET, UNMARKED);
-  }
-
-  mark(address: number) {
-    if (this.is_marked(address)) {
-      //if marked, do nothing
-      return;
-    }
-    // console.log('Marking', v)
-    //mark the tag at the address of the node
-    this.mark_byte(address);
-    //mark the children of that node recursively
-    const n_children = this.get_number_of_children(address);
-    // console.log('node-n_children', v, n_children);
-    for (let i = 0; i < n_children; i++) {
-      const child = this.get_child(address, i);
-      this.mark(child);
-    }
-    // console.log('Finished marking', v)
-  }
-
-  //function for deleting unreachable nodes
-  free_node(address: number) {
-    // console.log('freeing address-tag', v, heap.get_tag(v));
-    this.set(address, this.free); //the first word of the node now points to free
-    this.free = address; //v is marked as a free node, and will be the first to be allocated
-  }
-
-  sweep() {
-    // console.log('sweep start');
-    //deal with edge case where the amount of heap is exactly enough for allocate_literal_values/built_ins/constants
-    //Then bottom would be -1 and Ihis machine will crash
-    if (this.bottom === -1) {
-      return;
-    }
-    //Main loop
-    for (let v = this.bottom; v < this.top; v = v + NODE_SIZE) {
-      if (this.is_marked(v)) {
-        // console.log('mark tag', this.get_tag(v));
-        // console.log('wts - before unmark', word_to_string(this.get(v)));
-        this.unmark_byte(v);
-        // console.log('wts - after unmark', word_to_string(this.get(v)));
-      } else {
-        this.free_node(v);
-      }
-    }
-    // console.log('sweep end');
-  }
-
-  mark_sweep() {
-    // console.log('Running mark_sweep');
-    //Deal with edge case where the memory runs out before the first environment gets allocated on the HEAP
-    for (const machine of this.machines) {
-      if (machine.E === undefined) {
-        throw new Error("heap memory exhausted");
-      }
-    }
-    //This should be an array of addresses
-    const ROOTS = Array.from(this.machines).flatMap((machine) => [
-      ...machine.OS,
-      machine.E,
-      ...machine.RTS,
-      ...machine.get_temporary_roots(),
-    ]);
-    // console.log('OS-start of mark sweep', OS);
-    // console.log('RTS-start of mark sweep', RTS);
-    // console.log('E-start of mark sweep', E);
-    // console.log('Displaying current Environment', E)
-    // heap.Environment_console.log(heap.get_Callframe_environment(E))
-    // RTS.forEach((address) => {
-    //     if (heap.get_tag(address) === Callframe_tag) {
-    //         console.log('Displaying environment of Callframe - ', address)
-    //         console.log('Environment Address - ', heap.get_Callframe_environment(address))
-    //         heap.Environment_console.log(heap.get_Callframe_environment(address))
-    //     } else if (heap.get_tag(address) === Blockframe_tag) {
-    //         console.log('Displaying environment of Blockframe - ', address)
-    //         console.log('Environment Address - ', heap.get_Blockframe_environment(address))
-    //         heap.Environment_console.log(heap.get_Blockframe_environment(address))
-    //     }
-    // })
-    const mark_alias = (address) => this.mark(address);
-    ROOTS.forEach(mark_alias);
-    this.sweep();
-    if (this.free === -1) {
-      throw new Error("heap memory exhausted");
-    }
-    // console.log('mark_sweep done!')
-  }
-
-  // already_copied(node) => {
-  // return this.get_forwarding_address(node) >= to_space &&
-  // this.get_forwarding_address(node) <= free
-  // }
-
-  set_forwarding_address(node: number, address: number) {
-    this.data.setInt32(node * WORD_SIZE, address);
-  }
-  get_forwarding_address(node: number) {
-    return this.data.getInt32(node * WORD_SIZE);
   }
 
   // get and set a word in heap at given address
