@@ -67,7 +67,10 @@ export class Heap {
   top: number;
 
   // primitive values
-  values: Record<string, number>;
+  values: Record<
+    "False" | "True" | "Null" | "Undefined" | "Unassigned",
+    number
+  >;
 
   // builtins and constants
   builtins_frame: number;
@@ -117,12 +120,13 @@ export class Heap {
     this.free = 0;
     this.bottom = this.free;
 
-    this.values = {};
-    this.values.False = this.allocate(False_tag, 1);
-    this.values.True = this.allocate(True_tag, 1);
-    this.values.Null = this.allocate(Null_tag, 1);
-    this.values.Unassigned = this.allocate(Unassigned_tag, 1);
-    this.values.Undefined = this.allocate(Undefined_tag, 1);
+    this.values = {
+      False: this.allocate(False_tag, 1),
+      True: this.allocate(True_tag, 1),
+      Null: this.allocate(Null_tag, 1),
+      Unassigned: this.allocate(Unassigned_tag, 1),
+      Undefined: this.allocate(Undefined_tag, 1),
+    };
 
     this.machines = new Set();
 

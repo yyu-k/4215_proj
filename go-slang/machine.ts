@@ -567,7 +567,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED);
         machine.OS.pop(); //consume the mutex address
-        push(machine.OS, heap.values.null);
+        push(machine.OS, heap.values.Undefined);
       } else {
         machine.state = { state: "failed_lock" };
         //mutex address not consumed because busy wait will occur
@@ -577,7 +577,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
       machine.OS.pop(); //consume the mutex address
       //UNLOCK always return null, which gets popped in a sequence
-      push(machine.OS, heap.values.null);
+      push(machine.OS, heap.values.Undefined);
     } else {
       throw new Error("Unknown type for MUTEX bytecode");
     }
@@ -594,19 +594,19 @@ const microcode: MicrocodeFunctions<Instruction> = {
         heap.get_Waitgroup_value(waitgroup_address);
       heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value + 1);
       machine.OS.pop(); //consume the waitgroup address
-      push(machine.OS, heap.values.null);
+      push(machine.OS, heap.values.Undefined);
     } else if (instr.type === "Done") {
       const current_waitgroup_value =
         heap.get_Waitgroup_value(waitgroup_address);
       heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value - 1);
       machine.OS.pop(); //consume the waitgroup address
-      push(machine.OS, heap.values.null);
+      push(machine.OS, heap.values.Undefined);
     } else if (instr.type === "Wait") {
       const current_waitgroup_value =
         heap.get_Waitgroup_value(waitgroup_address);
       if (current_waitgroup_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         machine.OS.pop(); //consume the waitgroup address
-        push(machine.OS, heap.values.null);
+        push(machine.OS, heap.values.Undefined);
       } else {
         machine.state = { state: "failed_wait" };
       }
