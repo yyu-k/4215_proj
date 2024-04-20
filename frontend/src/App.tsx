@@ -6,6 +6,7 @@ import {
   Instruction,
   Heap,
   Machine,
+  handle_blocked_machines,
 } from "go-slang";
 import { Editor, OnChange, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
@@ -14,7 +15,6 @@ import { Tab, Tabs } from "./Tabs";
 import { getErrorDescription, getHeapJSValueString } from "./utils";
 
 import "./App.css";
-import { handle_blocked_machines } from "go-slang/dist/scheduler";
 
 type Editor = monaco.editor.IStandaloneCodeEditor;
 
