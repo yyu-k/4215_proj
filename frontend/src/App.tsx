@@ -6,7 +6,14 @@ import {
   Instruction,
   Heap,
   Machine,
+  handle_blocked_machines,
 } from "go-slang";
+import {
+  compress,
+  compressToEncodedURIComponent,
+  decompress,
+  decompressFromEncodedURIComponent,
+} from "lz-string";
 import { Editor, OnChange, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
@@ -14,7 +21,6 @@ import { Tab, Tabs } from "./Tabs";
 import { getErrorDescription, getHeapJSValueString } from "./utils";
 
 import "./App.css";
-import { handle_blocked_machines } from "go-slang/dist/scheduler";
 
 type Editor = monaco.editor.IStandaloneCodeEditor;
 
@@ -60,8 +66,17 @@ function App() {
 
   const handleEditorDidMount: OnMount = (editor) => {
     try {
-      const previousProgram = window.localStorage.getItem("program") ?? "";
-      if (previousProgram) {
+      let previousProgram: string | undefined = undefined;
+      if (window.location.hash && window.location.hash.startsWith("#code/")) {
+        const compressed = window.location.hash.slice("#code/".length);
+        previousProgram = decompressFromEncodedURIComponent(compressed) ?? "";
+      } else {
+        const storedProgram = window.localStorage.getItem("program");
+        if (storedProgram) {
+          previousProgram = decompress(storedProgram);
+        }
+      }
+      if (previousProgram !== undefined) {
         editor.setValue(previousProgram);
       }
     } catch (e) {
@@ -76,7 +91,7 @@ function App() {
     editorRef.current = editor;
   };
   const handleEditorDidChange: OnChange = (value) => {
-    window.localStorage.setItem("program", value ?? "");
+    window.localStorage.setItem("program", compress(value ?? ""));
   };
 
   function compileProgram(runProgram: boolean = false): EditorState {
@@ -154,6 +169,15 @@ function App() {
     };
   }
 
+  function copyLink() {
+    const programText = editorRef.current!.getValue();
+    navigator.clipboard.writeText(
+      `${window.location.origin}${window.location.pathname}#code/${compressToEncodedURIComponent(
+        programText,
+      )}`,
+    );
+  }
+
   return (
     <div className="grid">
       <div className="row-1 column-1 header">
@@ -168,6 +192,7 @@ function App() {
         <button onClick={() => setEditorState(stepProgram(true))}>
           Step All
         </button>
+        <button onClick={() => copyLink()}>Copy link</button>
       </div>
       <div className="column-1">
         <Editor
@@ -236,6 +261,7 @@ function InstructionsPanel({ editorState }: { editorState: EditorState }) {
           },
         },
       ]);
+      editor.revealLineInCenter(highlightedLine);
 
       return () => decorations.clear();
     }
@@ -375,7 +401,7 @@ function MachinesPanel({
               case "stepping":
               case "finished":
                 return editorState.machines.map((_, i) => (
-                  <Tab name={i}>
+                  <Tab key={i} name={i}>
                     {i === 0 ? "Default Machine" : `Machine ${i}`}
                   </Tab>
                 ));
@@ -384,7 +410,7 @@ function MachinesPanel({
         </Tabs>
       </div>
 
-      <div className="column-3">
+      <div className="column-3 machine">
         {machine && (
           <>
             <p>
@@ -398,7 +424,8 @@ function MachinesPanel({
                 </pre>
               </p>
             )}
-            {editorState.state === "finished" &&
+            {(editorState.state === "stepping" ||
+              editorState.state === "finished") &&
               machine.state.state === "finished" && (
                 <p>
                   <strong>Final value:</strong>{" "}
@@ -424,23 +451,39 @@ function MachinesPanel({
                 </pre>
               </>
             )}
-            {(editorState.state === "stepping" ||
-              editorState.state === "finished") && (
-              <>
-                <p>
-                  <strong>Operand stack:</strong>{" "}
-                </p>
-                <pre>
-                  <code>
-                    {machine.OS.map((address) =>
-                      getHeapJSValueString(editorState.heap, address),
-                    )
-                      .reverse()
-                      .join("\n")}
-                  </code>
-                </pre>
-              </>
-            )}
+            {editorState.state === "stepping" &&
+              machine.state.state !== "finished" && (
+                <div className="stacks">
+                  <div>
+                    <p>
+                      <strong>Operand stack:</strong>{" "}
+                    </p>
+                    <pre>
+                      <code>
+                        {machine.OS.map((address) =>
+                          getHeapJSValueString(editorState.heap, address),
+                        )
+                          .reverse()
+                          .join("\n")}
+                      </code>
+                    </pre>
+                  </div>
+                  <div>
+                    <p>
+                      <strong>Runtime stack:</strong>{" "}
+                    </p>
+                    <pre>
+                      <code>
+                        {machine.RTS.map((address) =>
+                          getHeapJSValueString(editorState.heap, address),
+                        )
+                          .reverse()
+                          .join("\n")}
+                      </code>
+                    </pre>
+                  </div>
+                </div>
+              )}
           </>
         )}
       </div>

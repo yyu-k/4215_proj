@@ -9,10 +9,11 @@ import {
   push,
   word_to_string,
 } from "./utilities";
-import { builtin_array, builtin_id_to_arity, added_builtins } from "./builtins";
+import { builtin_array, builtin_id_to_arity } from "./builtins";
 import { MUTEX_CONSTANTS } from "./added_builtins";
 
 type MachineState =
+  | { state: "not-started" }
   | { state: "default" }
   | { state: "errored"; error: unknown }
   | { state: "finished" }
@@ -425,20 +426,17 @@ const microcode: MicrocodeFunctions<Instruction> = {
     for (let i = arity - 1; i >= 0; i--) {
       heap.set_child(new_frame, i, machine.OS.pop()!);
     }
-    machine.OS.pop(); // pop fun
-    //AMENDED
-    //need to make sure that new_frame does not get deallocated before CALL exits
-    //since new_frame is not currently referenced anywhere
-    push(machine.RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
+    machine.OS.pop(); // pop function
+
+    // Prevent deallocation of new_frame when allocating Callframe
+    const get_new_frame = heap.create_temporary_gc_root(new_frame);
+
     const callframe_address = heap.allocate_Callframe(machine.E, machine.PC);
-    machine.RTS.pop(); //remove new_frame from RTS
     push(machine.RTS, callframe_address);
-    push(machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
     machine.E = heap.extend_Environment(
-      new_frame,
+      get_new_frame(),
       heap.get_Closure_environment(fun),
     );
-    machine.RTS.pop(); //remove new_frame from RTS
     machine.PC = new_PC;
   },
   GO: (machine, heap, instr) => {
@@ -480,23 +478,20 @@ const microcode: MicrocodeFunctions<Instruction> = {
       }
       machine.OS.pop(); // pop fun
 
-      //need to make sure that new_frame does not get deallocated before GO exits
-      //since new_frame is not currently referenced anywhere
-      push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
+      // Prevent deallocation of new_frame when allocating Callframe
+      const get_new_frame = heap.create_temporary_gc_root(new_frame);
+
       const callframe_address = heap.allocate_Callframe(
         // copy current environment
         machine.E,
         // set PC to DONE after returning from "function call"
         machine.instrs.length - 1,
       );
-      new_machine.RTS.pop(); //remove new_frame from RTS
       push(new_machine.RTS, callframe_address);
-      push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
       new_machine.E = heap.extend_Environment(
-        new_frame,
+        get_new_frame(),
         heap.get_Closure_environment(fun),
       );
-      new_machine.RTS.pop(); //remove new_frame from RTS
       new_machine.PC = new_PC;
       machine.OS.push(heap.values.Undefined);
     }
@@ -514,14 +509,12 @@ const microcode: MicrocodeFunctions<Instruction> = {
       heap.set_child(new_frame, i, machine.OS.pop()!);
     }
     machine.OS.pop(); // pop fun
-    // AMENDED
-    push(machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
+
     // don't push on RTS here
     machine.E = heap.extend_Environment(
       new_frame,
       heap.get_Closure_environment(fun),
     );
-    machine.RTS.pop(); //remove new_frame from RTS
     machine.PC = new_PC;
   },
   RESET: (machine, heap, _instr) => {
@@ -570,7 +563,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       if (current_mutex_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_LOCKED);
         machine.OS.pop(); //consume the mutex address
-        push(machine.OS, heap.values.null);
+        push(machine.OS, heap.values.Undefined);
       } else {
         machine.state = { state: "failed_lock" };
         //mutex address not consumed because busy wait will occur
@@ -580,7 +573,7 @@ const microcode: MicrocodeFunctions<Instruction> = {
       heap.set_Mutex_value(mutex_address, MUTEX_CONSTANTS.MUTEX_UNLOCKED);
       machine.OS.pop(); //consume the mutex address
       //UNLOCK always return null, which gets popped in a sequence
-      push(machine.OS, heap.values.null);
+      push(machine.OS, heap.values.Undefined);
     } else {
       throw new Error("Unknown type for MUTEX bytecode");
     }
@@ -597,19 +590,19 @@ const microcode: MicrocodeFunctions<Instruction> = {
         heap.get_Waitgroup_value(waitgroup_address);
       heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value + 1);
       machine.OS.pop(); //consume the waitgroup address
-      push(machine.OS, heap.values.null);
+      push(machine.OS, heap.values.Undefined);
     } else if (instr.type === "Done") {
       const current_waitgroup_value =
         heap.get_Waitgroup_value(waitgroup_address);
       heap.set_Waitgroup_value(waitgroup_address, current_waitgroup_value - 1);
       machine.OS.pop(); //consume the waitgroup address
-      push(machine.OS, heap.values.null);
+      push(machine.OS, heap.values.Undefined);
     } else if (instr.type === "Wait") {
       const current_waitgroup_value =
         heap.get_Waitgroup_value(waitgroup_address);
       if (current_waitgroup_value === MUTEX_CONSTANTS.MUTEX_UNLOCKED) {
         machine.OS.pop(); //consume the waitgroup address
-        push(machine.OS, heap.values.null);
+        push(machine.OS, heap.values.Undefined);
       } else {
         machine.state = { state: "failed_wait" };
       }
@@ -627,7 +620,7 @@ export class Machine {
   PC: number; // JS number
   E: number; // heap Address
   RTS: number[]; // JS array (stack) of Addresses
-  state: MachineState; //used for concurrency
+  state: MachineState; // machine state
   output: any[];
   heap: Heap;
 
@@ -636,16 +629,29 @@ export class Machine {
     this.OS = [];
     this.PC = 0;
     this.RTS = [];
-    this.state = { state: "default" };
+    this.state = { state: "not-started" };
     this.output = [];
 
-    this.E = heap.allocate_Environment(0);
-    this.E = heap.extend_Environment(heap.builtins_frame, this.E);
-    this.E = heap.extend_Environment(heap.added_builtins_frame, this.E);
-    this.E = heap.extend_Environment(heap.constants_frame, this.E);
-
+    this.E = heap.create_default_Environment();
     this.heap = heap;
     heap.add_machine(this);
+  }
+
+  handle_garbage_collection(collect: (address: number) => number) {
+    for (let i = 0; i < this.OS.length; i++) {
+      this.OS[i] = collect(this.OS[i]);
+    }
+    this.E = collect(this.E);
+    for (let i = 0; i < this.RTS.length; i++) {
+      this.RTS[i] = collect(this.RTS[i]);
+    }
+    if (this.state.state === "blocked_send") {
+      this.state.chan_address = collect(this.state.chan_address);
+      this.state.value = collect(this.state.value);
+    }
+    if (this.state.state === "blocked_receive") {
+      this.state.chan_address = collect(this.state.chan_address);
+    }
   }
 
   is_finished() {

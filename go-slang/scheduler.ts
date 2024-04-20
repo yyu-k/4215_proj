@@ -39,12 +39,6 @@ export function run(
           machines.push(new_machine);
         }
         if (
-          result.state.state === "failed_lock" ||
-          result.state.state === "failed_wait"
-        ) {
-          // just switch to another machine
-          continue;
-        } else if (
           result.state.state === "blocked_send" ||
           result.state.state === "blocked_receive"
         ) {
@@ -101,7 +95,7 @@ export function handle_blocked_machines(
   outer: for (let i = 0; i < blocked_send_machines.length; i++) {
     const blocked_send_machine = blocked_send_machines[i];
 
-    for (let j = 0; i < blocked_receive_machines.length; j++) {
+    for (let j = 0; j < blocked_receive_machines.length; j++) {
       const blocked_receive_machine = blocked_receive_machines[j];
 
       // TODO: typescript doesn't narrow based on above filters
