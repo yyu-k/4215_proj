@@ -289,7 +289,7 @@ describe("Slices", () => {
     expect(result[0].final_value).toStrictEqual(0);
   });
 
-  test("Can be applied to the len_cap function", () => {
+  test("Can be applied to the cap_slice function", () => {
     //Partly taken from https://go.dev/tour/moretypes/11
     const result = compile_and_run(`
       s := []int{2, 3, 5, 7, 11, 13}
@@ -355,6 +355,31 @@ describe("Slices", () => {
     expect(result[0].output).toStrictEqual([]);
     expect(result[0].final_value).toStrictEqual(null);
   });
+
+  test("Will throw with the syntax slice[low:high] if the high < low", () => {
+    const result = compile_and_run(`
+      numbers := [6]int{0, 1, 2, 3, 4, 5}
+      s := numbers[6:2]
+      s
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("errored");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual(null);
+  });
+
+  test("Will not throw with the syntax slice[low:high] if the high = low", () => {
+    const result = compile_and_run(`
+      numbers := [6]int{0, 1, 2, 3, 4, 5}
+      s := numbers[2:2]
+      s
+    `);
+    expect(result).toHaveLength(1);
+    expect(result[0].state.state).toStrictEqual("finished");
+    expect(result[0].output).toStrictEqual([]);
+    expect(result[0].final_value).toStrictEqual([]);
+  });
+
 
   test("allows for appending, which will utilize the same underlying array if capacity is not exceeded", () => {
     const result = compile_and_run(`

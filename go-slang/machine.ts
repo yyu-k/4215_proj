@@ -360,6 +360,9 @@ const microcode: MicrocodeFunctions<Instruction> = {
     if (new_end_index - new_start_index > old_capacity) {
       throw new Error("Capacity of slice exceeded based on index");
     }
+    if (new_end_index < new_start_index) {
+      throw new Error("Attempt to slice with high index lower than low index");
+    }
     const new_slice = heap.allocate_Slice(
       array_address,
       new_start_index,
