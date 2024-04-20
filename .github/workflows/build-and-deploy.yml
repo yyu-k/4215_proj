@@ -22,7 +22,7 @@ jobs:
           cd frontend
           npm ci
           npm link ../go-slang
-          npm run build
+          npm run build-gh-pages
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
