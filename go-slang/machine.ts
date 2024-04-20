@@ -13,6 +13,7 @@ import { builtin_array, builtin_id_to_arity, added_builtins } from "./builtins";
 import { MUTEX_CONSTANTS } from "./added_builtins";
 
 type MachineState =
+  | { state: "not-started" }
   | { state: "default" }
   | { state: "errored"; error: unknown }
   | { state: "finished" }
@@ -633,7 +634,7 @@ export class Machine {
     this.OS = [];
     this.PC = 0;
     this.RTS = [];
-    this.state = { state: "default" };
+    this.state = { state: "not-started" };
     this.output = [];
 
     this.E = heap.allocate_Environment(0);
