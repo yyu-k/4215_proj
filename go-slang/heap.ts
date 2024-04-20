@@ -558,6 +558,14 @@ export class Heap {
     return new_env_address;
   }
 
+  create_default_Environment() {
+    let E = this.allocate_Environment(0);
+    E = this.extend_Environment(this.builtins_frame, E);
+    E = this.extend_Environment(this.added_builtins_frame, E);
+    E = this.extend_Environment(this.constants_frame, E);
+    return E;
+  }
+
   // for debuggging: display environment
   display_Environment(env_address: number) {
     const size = this.get_number_of_children(env_address);

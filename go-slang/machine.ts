@@ -629,11 +629,7 @@ export class Machine {
     this.state = { state: "not-started" };
     this.output = [];
 
-    this.E = heap.allocate_Environment(0);
-    this.E = heap.extend_Environment(heap.builtins_frame, this.E);
-    this.E = heap.extend_Environment(heap.added_builtins_frame, this.E);
-    this.E = heap.extend_Environment(heap.constants_frame, this.E);
-
+    this.E = heap.create_default_Environment();
     this.heap = heap;
     heap.add_machine(this);
   }
