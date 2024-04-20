@@ -237,6 +237,7 @@ LoopStatement "loops"
 SimpleStatement "simple statement"
     = AssignmentStatement
     / ShortDeclaration
+    / ChannelSendStatement
     / Expression
 
 SimpleWithoutDec
