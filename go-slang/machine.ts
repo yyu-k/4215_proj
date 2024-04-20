@@ -675,6 +675,8 @@ export class Machine {
       return { state: this.state, instructions_ran, new_machines };
     }
 
+    this.state = { state: "default" };
+
     while (
       instructions_ran < num_instructions &&
       this.instrs[this.PC].tag !== "DONE"
