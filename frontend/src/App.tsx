@@ -8,6 +8,12 @@ import {
   Machine,
   handle_blocked_machines,
 } from "go-slang";
+import {
+  compress,
+  compressToEncodedURIComponent,
+  decompress,
+  decompressFromEncodedURIComponent,
+} from "lz-string";
 import { Editor, OnChange, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
@@ -60,8 +66,17 @@ function App() {
 
   const handleEditorDidMount: OnMount = (editor) => {
     try {
-      const previousProgram = window.localStorage.getItem("program") ?? "";
-      if (previousProgram) {
+      let previousProgram: string | undefined = undefined;
+      if (window.location.hash && window.location.hash.startsWith("#code/")) {
+        const compressed = window.location.hash.slice("#code/".length);
+        previousProgram = decompressFromEncodedURIComponent(compressed) ?? "";
+      } else {
+        const storedProgram = window.localStorage.getItem("program");
+        if (storedProgram) {
+          previousProgram = decompress(storedProgram);
+        }
+      }
+      if (previousProgram !== undefined) {
         editor.setValue(previousProgram);
       }
     } catch (e) {
@@ -76,7 +91,7 @@ function App() {
     editorRef.current = editor;
   };
   const handleEditorDidChange: OnChange = (value) => {
-    window.localStorage.setItem("program", value ?? "");
+    window.localStorage.setItem("program", compress(value ?? ""));
   };
 
   function compileProgram(runProgram: boolean = false): EditorState {
@@ -154,6 +169,15 @@ function App() {
     };
   }
 
+  function copyLink() {
+    const programText = editorRef.current!.getValue();
+    navigator.clipboard.writeText(
+      `${window.location.origin}${window.location.pathname}#code/${compressToEncodedURIComponent(
+        programText,
+      )}`,
+    );
+  }
+
   return (
     <div className="grid">
       <div className="row-1 column-1 header">
@@ -168,6 +192,7 @@ function App() {
         <button onClick={() => setEditorState(stepProgram(true))}>
           Step All
         </button>
+        <button onClick={() => copyLink()}>Copy link</button>
       </div>
       <div className="column-1">
         <Editor

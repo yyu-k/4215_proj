@@ -51,8 +51,13 @@
 
 .header {
   display: flex;
+  overflow: auto;
   border-bottom: 1px solid #eee;
   align-items: stretch;
+}
+
+.header>* {
+  flex: 1 0 auto;
 }
 
 .header h1 {
