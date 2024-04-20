@@ -9,7 +9,7 @@ import {
   push,
   word_to_string,
 } from "./utilities";
-import { builtin_array, builtin_id_to_arity } from "./builtins";
+import { builtin_array, builtin_id_to_arity, added_builtins } from "./builtins";
 import { MUTEX_CONSTANTS } from "./added_builtins";
 
 type MachineState =
@@ -426,17 +426,20 @@ const microcode: MicrocodeFunctions<Instruction> = {
     for (let i = arity - 1; i >= 0; i--) {
       heap.set_child(new_frame, i, machine.OS.pop()!);
     }
-    machine.OS.pop(); // pop function
-
-    // Prevent deallocation of new_frame when allocating Callframe
-    const get_new_frame = heap.create_temporary_gc_root(new_frame);
-
+    machine.OS.pop(); // pop fun
+    //AMENDED
+    //need to make sure that new_frame does not get deallocated before CALL exits
+    //since new_frame is not currently referenced anywhere
+    push(machine.RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
     const callframe_address = heap.allocate_Callframe(machine.E, machine.PC);
+    machine.RTS.pop(); //remove new_frame from RTS
     push(machine.RTS, callframe_address);
+    push(machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
     machine.E = heap.extend_Environment(
-      get_new_frame(),
+      new_frame,
       heap.get_Closure_environment(fun),
     );
+    machine.RTS.pop(); //remove new_frame from RTS
     machine.PC = new_PC;
   },
   GO: (machine, heap, instr) => {
@@ -478,20 +481,23 @@ const microcode: MicrocodeFunctions<Instruction> = {
       }
       machine.OS.pop(); // pop fun
 
-      // Prevent deallocation of new_frame when allocating Callframe
-      const get_new_frame = heap.create_temporary_gc_root(new_frame);
-
+      //need to make sure that new_frame does not get deallocated before GO exits
+      //since new_frame is not currently referenced anywhere
+      push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when allocating Callframe
       const callframe_address = heap.allocate_Callframe(
         // copy current environment
         machine.E,
         // set PC to DONE after returning from "function call"
         machine.instrs.length - 1,
       );
+      new_machine.RTS.pop(); //remove new_frame from RTS
       push(new_machine.RTS, callframe_address);
+      push(new_machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
       new_machine.E = heap.extend_Environment(
-        get_new_frame(),
+        new_frame,
         heap.get_Closure_environment(fun),
       );
+      new_machine.RTS.pop(); //remove new_frame from RTS
       new_machine.PC = new_PC;
       machine.OS.push(heap.values.Undefined);
     }
@@ -509,12 +515,14 @@ const microcode: MicrocodeFunctions<Instruction> = {
       heap.set_child(new_frame, i, machine.OS.pop()!);
     }
     machine.OS.pop(); // pop fun
-
+    // AMENDED
+    push(machine.RTS, new_frame); //prevent new_frame from getting deallocated when extending environment
     // don't push on RTS here
     machine.E = heap.extend_Environment(
       new_frame,
       heap.get_Closure_environment(fun),
     );
+    machine.RTS.pop(); //remove new_frame from RTS
     machine.PC = new_PC;
   },
   RESET: (machine, heap, _instr) => {
@@ -620,7 +628,7 @@ export class Machine {
   PC: number; // JS number
   E: number; // heap Address
   RTS: number[]; // JS array (stack) of Addresses
-  state: MachineState; // machine state
+  state: MachineState; //used for concurrency
   output: any[];
   heap: Heap;
 
@@ -637,21 +645,14 @@ export class Machine {
     heap.add_machine(this);
   }
 
-  handle_garbage_collection(collect: (address: number) => number) {
-    for (let i = 0; i < this.OS.length; i++) {
-      this.OS[i] = collect(this.OS[i]);
-    }
-    this.E = collect(this.E);
-    for (let i = 0; i < this.RTS.length; i++) {
-      this.RTS[i] = collect(this.RTS[i]);
-    }
+  get_temporary_roots() {
     if (this.state.state === "blocked_send") {
-      this.state.chan_address = collect(this.state.chan_address);
-      this.state.value = collect(this.state.value);
+      return [this.state.chan_address, this.state.value];
     }
     if (this.state.state === "blocked_receive") {
-      this.state.chan_address = collect(this.state.chan_address);
+      return [this.state.chan_address];
     }
+    return [];
   }
 
   is_finished() {

@@ -13,36 +13,31 @@ type BuiltinFunction = (
 ) => unknown;
 
 export const mutex_builtins: Record<string, BuiltinFunction> = {
-  Mutex: (_machine, heap) =>
-    heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
+  Mutex: (machine, heap) => heap.allocate_Mutex(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
   is_mutex: (machine, heap, _) =>
     heap.is_Mutex(machine.OS.pop()!) ? heap.values.True : heap.values.False,
 };
 
 export const waitGroup_builtins: Record<string, BuiltinFunction> = {
-  WaitGroup: (_machine, heap) =>
+  WaitGroup: (machine, heap) =>
     heap.allocate_Waitgroup(MUTEX_CONSTANTS.MUTEX_UNLOCKED),
   is_waitGroup: (machine, heap, _) =>
     heap.is_Waitgroup(machine.OS.pop()!) ? heap.values.True : heap.values.False,
 };
 
 const copy_append = (
-  _machine: Machine,
+  machine: Machine,
   heap: Heap,
   current_slice_address: number,
   item: number,
 ) => {
-  let current_array_address = heap.get_Slice_array_address(
+  const current_array_address = heap.get_Slice_array_address(
     current_slice_address,
   );
   const current_capacity = heap.get_Slice_capacity(current_slice_address);
   const current_start_index = heap.get_Slice_start_index(current_slice_address);
   const needed_capacity = current_capacity + 1;
-  const get_current_array_address = heap.create_temporary_gc_root(
-    current_array_address,
-  );
-  const new_array_address = heap.allocate_Array(needed_capacity);
-  current_array_address = get_current_array_address();
+  const new_array_address = heap.allocate_Array(needed_capacity)!;
   let new_index = 0;
   //copy; current_start_index + current_capacity gives max index + 1
   for (
@@ -64,7 +59,6 @@ const copy_append = (
   );
   return new_slice_address;
 };
-
 export const array_builtins: Record<string, BuiltinFunction> = {
   len_slice: (machine, heap, _address) => {
     //need to allocate a number on the heap to return the result
