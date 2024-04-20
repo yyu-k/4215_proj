@@ -57,6 +57,7 @@ export class Heap {
   top_of_space: number;
   // next free slot in heap
   free: number;
+  temporary_gc_roots: number[];
 
   // primitive values
   values: Record<
@@ -104,6 +105,7 @@ export class Heap {
     this.from_space = this.to_space + this.space_size;
     this.top_of_space = this.to_space + this.space_size - 1;
     this.free = this.to_space;
+    this.temporary_gc_roots = [];
 
     this.values = {
       False: this.allocate(False_tag, 1),
@@ -122,6 +124,25 @@ export class Heap {
     this.constants_frame = this.allocate_constant_frame(custom_constants);
   }
 
+  create_temporary_gc_root(address: number) {
+    let index = -1;
+    for (let i = 0; i < this.temporary_gc_roots.length; i++) {
+      if (this.temporary_gc_roots[i] === -1) {
+        index = i;
+        break;
+      }
+    }
+    if (index === -1) index = this.temporary_gc_roots.length;
+
+    this.temporary_gc_roots[index] = address;
+
+    return () => {
+      const address = this.temporary_gc_roots[index];
+      this.temporary_gc_roots[index] = -1;
+      return address;
+    };
+  }
+
   flip() {
     const temp = this.from_space;
     this.from_space = this.to_space;
@@ -137,13 +158,13 @@ export class Heap {
     this.values.Undefined = this.copy(this.values.Undefined);
     this.values.Unassigned = this.copy(this.values.Unassigned);
 
-    const ROOTS = Array.from(this.machines).flatMap((machine) => [
-      ...machine.OS,
-      machine.E,
-      ...machine.RTS,
-      ...machine.get_temporary_roots(),
-    ]);
-    ROOTS.forEach((address) => this.copy(address));
+    for (const machine of this.machines) {
+      machine.handle_garbage_collection((address) => this.copy(address));
+    }
+    for (let i = 0; i < this.temporary_gc_roots.length; i++) {
+      if (this.temporary_gc_roots[i] !== -1)
+        this.temporary_gc_roots[i] = this.copy(this.temporary_gc_roots[i]);
+    }
     while (scan < this.free) {
       for (let i = 1; i < this.get_number_of_children(scan); i++) {
         this.set(scan + i, this.copy(this.get(scan + i)));
@@ -186,6 +207,7 @@ export class Heap {
   }
 
   allocate_builtin_frame(builtins: Builtins) {
+    // No need to create temporary GC roots since these are allocated when constructing the heap.
     const builtin_values = Object.values(builtins);
     const frame_address = this.allocate_Frame(builtin_values.length);
     for (let i = 0; i < builtin_values.length; i++) {
@@ -196,6 +218,7 @@ export class Heap {
   }
 
   allocate_constant_frame(constants: Constants) {
+    // No need to create temporary GC roots since these are allocated when constructing the heap.
     const constant_values = Object.values(constants);
     const frame_address = this.allocate_Frame(constant_values.length);
     for (let i = 0; i < constant_values.length; i++) {
@@ -389,10 +412,11 @@ export class Heap {
   // note: currently bytes at offset 4 and 7 are not used;
   //   they could be used to increase pc and #children range
   allocate_Closure(arity: number, pc: number, env: number) {
+    const get_env = this.create_temporary_gc_root(env);
     const address = this.allocate(Closure_tag, 2);
     this.set_byte_at_offset(address, 1, arity);
     this.set_2_bytes_at_offset(address, 2, pc);
-    this.set(address + 1, env);
+    this.set(address + 1, get_env());
     return address;
   }
   get_Closure_arity(address: number) {
@@ -411,8 +435,9 @@ export class Heap {
   // block frame
   // [1 byte tag, 4 bytes unused, 2 bytes #children, 1 byte unused]
   allocate_Blockframe(env: number) {
+    const get_env = this.create_temporary_gc_root(env);
     const address = this.allocate(Blockframe_tag, 2);
-    this.set(address + 1, env);
+    this.set(address + 1, get_env());
     return address;
   }
   get_Blockframe_environment(address: number) {
@@ -426,9 +451,10 @@ export class Heap {
   // [1 byte tag, 1 byte unused, 2 bytes pc, 1 byte unused, 2 bytes #children, 1 byte unused]
   // followed by the address of env
   allocate_Callframe(env: number, pc: number) {
+    const get_env = this.create_temporary_gc_root(env);
     const address = this.allocate(Callframe_tag, 2);
     this.set_2_bytes_at_offset(address, 2, pc);
-    this.set(address + 1, env);
+    this.set(address + 1, get_env());
     return address;
   }
   get_Callframe_environment(address: number) {
@@ -446,10 +472,11 @@ export class Heap {
   // followed by the address of env
   //start and end are pc
   allocate_Whileframe(env: number, start: number, end: number) {
+    const get_env = this.create_temporary_gc_root(env);
     const address = this.allocate(Whileframe_tag, 2);
     this.set_2_bytes_at_offset(address, 1, start);
     this.set_2_bytes_at_offset(address, 3, end);
-    this.set(address + 1, env);
+    this.set(address + 1, get_env());
     return address;
   }
   get_Whileframe_environment(address: number) {
@@ -517,14 +544,17 @@ export class Heap {
   // environment to the new environment.
   // enter the address of the new frame to end
   // of the new environment
-  extend_Environment(frame_address: number, env_address: number) {
-    const old_size = this.get_size(env_address);
+  extend_Environment(frame: number, env: number) {
+    const old_size = this.get_size(env);
+    const get_frame = this.create_temporary_gc_root(frame);
+    const get_env = this.create_temporary_gc_root(env);
     const new_env_address = this.allocate_Environment(old_size);
+    env = get_env();
     let i: number;
     for (i = 0; i < old_size - 1; i++) {
-      this.set_child(new_env_address, i, this.get_child(env_address, i));
+      this.set_child(new_env_address, i, this.get_child(env, i));
     }
-    this.set_child(new_env_address, i, frame_address);
+    this.set_child(new_env_address, i, get_frame());
     return new_env_address;
   }
 
@@ -544,9 +574,11 @@ export class Heap {
   // [1 byte tag, 4 bytes unused, 2 bytes #children, 1 byte unused]
   // followed by head and tail addresses, one word each
   allocate_Pair(hd: number, tl: number) {
+    const get_hd = this.create_temporary_gc_root(hd);
+    const get_tl = this.create_temporary_gc_root(tl);
     const pair_address = this.allocate(Pair_tag, 3);
-    this.set_child(pair_address, 0, hd);
-    this.set_child(pair_address, 1, tl);
+    this.set_child(pair_address, 0, get_hd());
+    this.set_child(pair_address, 1, get_tl());
     return pair_address;
   }
   is_Pair(address: number) {
@@ -624,7 +656,9 @@ export class Heap {
       );
     }
     const capacity = this.get_Array_size(array_address) - start_index;
+    const get_array_address = this.create_temporary_gc_root(array_address);
     const slice_address = this.allocate(Slice_tag, 2);
+    array_address = get_array_address();
     this.set_byte_at_offset(
       slice_address,
       this.SLICE_START_INDEX_OFFSET,
@@ -762,7 +796,6 @@ export class Heap {
     this.set_child(mutex_address, 0, n);
     return mutex_address;
   }
-
   set_Mutex_value(address: number, value: number) {
     if (!this.is_Mutex(address)) {
       throw new TypeError(
@@ -771,7 +804,6 @@ export class Heap {
     }
     return this.set_child(address, 0, value);
   }
-
   get_Mutex_value(address: number) {
     if (!this.is_Mutex(address)) {
       throw new TypeError(
@@ -780,10 +812,10 @@ export class Heap {
     }
     return this.get_child(address, 0);
   }
-
   is_Mutex(address: number) {
     return this.get_tag(address) === Mutex_tag;
   }
+
   //Waitgroup
   // [1 byte tag, 4 bytes unused,
   //  2 bytes #children, 1 byte unused]
@@ -793,7 +825,6 @@ export class Heap {
     this.set_child(waitgroup_address, 0, n);
     return waitgroup_address;
   }
-
   set_Waitgroup_value(address: number, value: number) {
     if (!this.is_Waitgroup(address)) {
       throw new TypeError(
@@ -802,7 +833,6 @@ export class Heap {
     }
     return this.set_child(address, 0, value);
   }
-
   get_Waitgroup_value(address: number) {
     if (!this.is_Waitgroup(address)) {
       throw new TypeError(
@@ -811,7 +841,6 @@ export class Heap {
     }
     return this.get_child(address, 0);
   }
-
   is_Waitgroup(address: number) {
     return this.get_tag(address) === Waitgroup_tag;
   }
