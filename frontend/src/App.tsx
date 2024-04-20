@@ -401,7 +401,7 @@ function MachinesPanel({
               case "stepping":
               case "finished":
                 return editorState.machines.map((_, i) => (
-                  <Tab name={i}>
+                  <Tab key={i} name={i}>
                     {i === 0 ? "Default Machine" : `Machine ${i}`}
                   </Tab>
                 ));
