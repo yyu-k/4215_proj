@@ -863,7 +863,7 @@ export class Heap {
     this.set_2_bytes_at_offset(channel_address, 1, 0);
     if (size > 0) {
       for (let i = 0; i < size; i++) {
-        this.set_child(channel_address, i, this.values.Undefined);
+        this.set_child(channel_address, i, this.values.Null);
       }
     }
     return channel_address;
