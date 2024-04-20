@@ -691,7 +691,7 @@ Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 EOS "end of statement"
   = WhiteSpace* ";" WhiteSpace*
   / WhiteSpace* (LineTerminatorSequence WhiteSpace*)+
-  / EOF
+  / WhiteSpace* EOF
 
 EOF "end of file"
   = !.
